@@ -3,6 +3,7 @@ from threading import Thread
 import os
 from os.path import expanduser
 from subprocess import Popen
+from threading import Thread
 
 # Fast bytes convertion
 def byt(text):
@@ -13,12 +14,14 @@ def accept_connection():
 	global IPS
 	global connections
 	global QUIT
+	global clients
 
 	try:
 		while(not QUIT):
 			client, client_address = s.accept()
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
+			clients[client] = 0
 			IPS.append(client_address)
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
@@ -123,19 +126,18 @@ def show_topics():
 	else:
 		return "Forum is empty"
 
+def broadcast(msg, usr):
+	global clients
+
+	for sock in clients:
+		if(sock == usr):
+			continue
+		if(clients[sock]):
+			sock.send(byt(msg))
+
 # Server activities
 def handle_client(client, IP):
-	'''
-
-	Commands:
-
-	0 = show_topics()
-	1 = in(Remove postagem)
-	2 = rd(Lê postagem)
-	3 = out(Adiciona postagem)
-
-	'''
-
+	CHAT = 0
 	client.send(byt("Type a username"))
 	username = client.recv(4096).decode()
 
@@ -146,6 +148,26 @@ def handle_client(client, IP):
 		while(True):
 			data = client.recv(4096).decode()
 			command = data.split(" ")[0]
+
+			# Turn on chat mode
+			if(command == "chat" and CHAT == 0):
+				global clients
+				clients[client] = 1
+				client.send(byt("Connected to Chat!"))
+				broadcast(username + " has connected", client)
+				CHAT = ''
+				continue
+
+			# Chat send
+			elif(CHAT == 1):
+				if(data[0:2] == "/q"):
+					client.send(byt("Disconnected from Chat!"))
+					CHAT = 0
+					clients[client] = 0
+				else:
+					msg = username + ": " + data
+					broadcast(msg, client)
+				continue
 				
 			# Temporary halt
 			if(command == "show"):
@@ -201,12 +223,14 @@ def handle_client(client, IP):
 
 IPS = []
 connections = {}
+clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
 HOST = '186.219.90.134'
 PORT = 33000
 BUFSIZ = 1024
 ADDR = (HOST, PORT)
 QUIT = False
+Chat_Threads = []
 
 if(not os.path.exists(POSTDIR)):
 	os.system("mkdir Blogs")

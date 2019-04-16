@@ -1,0 +1,10 @@
+Tutor: Vamos começar com o tutorial!
+Tutor: show é o comando que mostra todos os tópicos do forum
+Tutor: read deixa você ler páginas de um tópico. Cada pagina possui 10 mensagens. A primeira página é a página 0, e você pode acessar outras páginas colocando o número. O exemplo seguinte, lê do tópico pagode na página 0, e depois na página 1
+Tutor: read pagode
+Tutor: read pagode 1
+Tutor: write escreve em um tópico alguma mensagem
+Tutor: write pagode iêiêiê
+Tutor: delete apaga a última mensagem enviada num tópico por você
+Tutor: delete pagode
+Tutor: quit e h saem do programa e mostram os comandos do sistema, respectivamente. Parabéns por ver o tutorial, você está pronto!

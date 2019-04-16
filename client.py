@@ -23,11 +23,18 @@ def byt(text):
 
 def async_send():
 	global QUIT
+	global CHAT
 
 	try:
 		while(not QUIT):
 			sent = input()
-			os.system("cls" if os.name == 'nt' else 'clear')
+			if(not CHAT):
+				os.system("cls" if os.name == 'nt' else 'clear')
+			if(sent == "chat"):
+				CHAT = True
+			elif(sent == "/q"):
+				CHAT = False
+				os.system("cls" if os.name == 'nt' else 'clear')
 			s.send(byt(sent))
 	except(OSError, EOFError):
 		return
@@ -55,6 +62,7 @@ def join_all(thList):
 QUIT = False
 HOST = "186.219.90.134"
 PORT = 33000
+CHAT = False
 threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))

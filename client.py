@@ -30,6 +30,8 @@ def async_send():
 			sent = input()
 			if(not CHAT):
 				os.system("cls" if os.name == 'nt' else 'clear')
+			else:
+				print()
 			if(sent == "chat"):
 				CHAT = True
 			elif(sent == "/q"):
@@ -60,7 +62,7 @@ def join_all(thList):
 		th.join()
 
 QUIT = False
-HOST = "186.219.90.134"
+HOST = "186.219.90.7"
 PORT = 33000
 CHAT = False
 threads = []

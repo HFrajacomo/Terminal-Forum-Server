@@ -21,7 +21,7 @@ def accept_connection():
 			client, client_address = s.accept()
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
-			clients[client] = 0
+			clients[client] = [0, ""]
 			IPS.append(client_address)
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
@@ -126,13 +126,13 @@ def show_topics():
 	else:
 		return "Forum is empty"
 
-def broadcast(msg, usr):
+def broadcast(msg, username):
 	global clients
 
 	for sock in clients:
-		if(sock == usr):
+		if(clients[sock][1] == username):
 			continue
-		if(clients[sock]):
+		if(clients[sock][0] == 1):
 			sock.send(byt(msg))
 
 # Server activities
@@ -140,6 +140,8 @@ def handle_client(client, IP):
 	CHAT = 0
 	client.send(byt("Type a username"))
 	username = client.recv(4096).decode()
+	global clients
+	clients[client] = [0, username]
 
 	client.send(byt("\nCommands:\n\nshow\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"))
 
@@ -151,11 +153,10 @@ def handle_client(client, IP):
 
 			# Turn on chat mode
 			if(command == "chat" and CHAT == 0):
-				global clients
-				clients[client] = 1
+				clients[client] = [1, username]
 				client.send(byt("Connected to Chat!"))
-				broadcast(username + " has connected", client)
-				CHAT = ''
+				broadcast(username + " has connected\n", username)
+				CHAT = 1
 				continue
 
 			# Chat send
@@ -163,10 +164,11 @@ def handle_client(client, IP):
 				if(data[0:2] == "/q"):
 					client.send(byt("Disconnected from Chat!"))
 					CHAT = 0
-					clients[client] = 0
+					clients[client] = [0, username]
+					broadcast(username + " has disconnected\n", username)
 				else:
-					msg = username + ": " + data
-					broadcast(msg, client)
+					msg = username + ": " + data + "\n"
+					broadcast(msg, username)
 				continue
 				
 			# Temporary halt
@@ -225,7 +227,7 @@ IPS = []
 connections = {}
 clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
-HOST = '186.219.90.134'
+HOST = '186.219.90.7'
 PORT = 33000
 BUFSIZ = 1024
 ADDR = (HOST, PORT)

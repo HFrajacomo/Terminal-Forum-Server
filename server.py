@@ -208,6 +208,9 @@ BUFSIZ = 1024
 ADDR = (HOST, PORT)
 QUIT = False
 
+if(not os.path.exists(POSTDIR)):
+	os.system("mkdir Blogs")
+
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  
 s.listen(1)           

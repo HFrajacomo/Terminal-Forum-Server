@@ -53,9 +53,9 @@ def async_receive(conn):
 		received = conn.recv(4096).decode()
 
 		if(received[0:5] == "<FTP>"):
-			home = os.path.expanduser("~")
+			Desktop = os.path.expanduser("~") + "\\Desktop"
 			filename = received[5:]
-			file = open(home + "\\" + filename, "rb")
+			file = open(Desktop + "\\" + filename, "rb")
 			file_data = file.read()
 			conn.send(file_data)
 			conn.send(byt("<FTP>"))

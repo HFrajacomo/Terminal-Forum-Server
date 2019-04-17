@@ -4,6 +4,7 @@ import os
 from os.path import expanduser
 from subprocess import Popen
 from threading import Thread
+from datetime import datetime
 
 # Fast bytes convertion
 def byt(text):
@@ -138,7 +139,7 @@ def broadcast(msg, username):
 
 # Returns help message
 def help_message():
-	return "Commands:\n\nshow\nchat\nsend <filedir>\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
+	return "Commands:\n\nshow\nchat\upload <filedir>\nfiles\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
 
 # Prints all online users in chat
 def whoson():
@@ -151,8 +152,32 @@ def whoson():
 
 	return acc
 
+# Print chat help message
 def print_chat_help():
 	return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n"
+
+# Check if file exists in _ref file
+def check_file(name):
+	ref = open(REFFILE, "r")
+
+	for line in ref:
+		if(line.split("\t")[0] == name):
+			return True
+	return False
+
+# Removes an entry from _ref file
+def update_file(name):
+	ref = open(REFFILE, "r")
+	acc = ""
+
+	for line in ref:
+		if(not line.split("\t")[0] == name):
+			acc += line
+
+	ref.close()
+	ref = open(REFFILE, "w")
+	ref.write(acc)
+	ref.close()
 
 # Server activities
 def handle_client(client, IP):
@@ -181,6 +206,13 @@ def handle_client(client, IP):
 					file_data += data[0:-5]
 					file.write(file_data)
 					file.close()
+
+					if(check_file(filename)):
+						update_file(filename)
+
+					ref = open(REFFILE, "a")
+					ref.write(filename + "\t" + username + "\t" + str(datetime.now()) + "\n")
+					ref.close()
 					client.send(byt("File successfully sent"))
 					FTP = False
 					continue
@@ -226,12 +258,18 @@ def handle_client(client, IP):
 				continue
 
 			# Activates FTP Stream
-			elif(command == "send"):
+			elif(command == "upload"):
 				filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
 				filed = " ".join(data.split(" ")[1:])
 				file = open(FILEDIR + filename, "wb")
 				FTP = True
 				client.send(byt("<FTP>" + filed))
+				continue
+
+			elif(command == "files"):
+				ref = open(REFFILE, "r")
+				client.send(byt(ref.read()))
+				ref.close()
 				continue
 
 			elif(command == "write"):
@@ -286,6 +324,7 @@ connections = {}
 clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"
+REFFILE = FILEDIR + "_ref"
 HOST = '200.136.206.137'
 PORT = 33000
 BUFSIZ = 1024
@@ -298,6 +337,8 @@ if(not os.path.exists(POSTDIR)):
 
 if(not os.path.exists(FILEDIR)):
 	os.system("mkdir Files")
+	reffile = open(FILEDIR + "_ref", "w")
+	reffile.close()
 
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  

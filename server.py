@@ -151,8 +151,12 @@ def whoson():
 
 	return acc
 
+def print_chat_help():
+	return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n"
+
 # Server activities
 def handle_client(client, IP):
+	message_count = 0  # After 20 messages, show help message
 	CHAT = 0
 	FTP = False
 	file_data = b''
@@ -199,14 +203,21 @@ def handle_client(client, IP):
 			elif(CHAT == 1):
 				if(data[0:2] == "/w"):
 					client.send(byt(whoson()))
+					continue
 				if(data[0:2] == "/q"):
 					client.send(byt("Disconnected from Chat!"))
 					CHAT = 0
+					message_count = 0
 					clients[client] = [0, username]
 					broadcast(username + " has disconnected\n", username)
 				else:
+					message_count += 1
 					msg = username + ": " + data + "\n"
 					broadcast(msg, username)
+
+					if(message_count >= 20):
+						client.send(byt(print_chat_help()))
+						message_count = 0
 				continue
 				
 			# Temporary halt

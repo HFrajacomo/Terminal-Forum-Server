@@ -38,6 +38,9 @@ def async_send():
 			elif(sent == "/q"):
 				CHAT = False
 				os.system("cls" if os.name == 'nt' else 'clear')
+			elif(CHAT and sent == "/c"):
+				os.system("cls" if os.name == 'nt' else 'clear')
+				continue
 			s.send(byt(sent))
 	except(OSError, EOFError):
 		return

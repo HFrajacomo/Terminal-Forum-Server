@@ -140,6 +140,17 @@ def broadcast(msg, username):
 def help_message():
 	return "Commands:\n\nshow\nchat\nsend <filedir>\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
 
+# Prints all online users in chat
+def whoson():
+	global clients
+	acc = "Online Users: \n\n"
+
+	for sock in clients:
+		if(clients[sock][0] == 1):
+			acc += clients[sock][1] + "\n"
+
+	return acc
+
 # Server activities
 def handle_client(client, IP):
 	CHAT = 0
@@ -179,12 +190,15 @@ def handle_client(client, IP):
 				clients[client] = [1, username]
 				client.send(byt("Connected to Chat!"))
 				broadcast(username + " has connected\n", username)
+				client.send(byt(whoson()))
 				CHAT = 1
 				continue
 
 
 			# Chat send
 			elif(CHAT == 1):
+				if(data[0:2] == "/w"):
+					client.send(byt(whoson()))
 				if(data[0:2] == "/q"):
 					client.send(byt("Disconnected from Chat!"))
 					CHAT = 0

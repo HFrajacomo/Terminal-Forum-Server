@@ -1,0 +1,38 @@
+Soul Warden: (Carcereiro de Almas)
+
+Soltura de almas
+Alimentação
+Pacificação
+Incorporação
+Reconstrução de alma  (revive)
+Crosta Rift (undead only)
+Fusão de almas (Persona)
+
+
+Spirit Mage: (Mago Espiritual)
+
+Detectar Espíritos
+Rajada Espiritual 
+Pulso Mágico (Knockback e impacto)
+Lâmina Fantasma
+Soul Bind (igual do Skyrim)
+Zona da Morte (dano de proximidade à um lugar)
+Zona da Morte 2 (dano de proximidade ao usuário)
+
+Ilusionista: (Ilusionista)
+
+Encantamento Ilusório (2 turnos)
+Mudar Realidade 1-5
+
+
+--------------- Corrupcionismo
+
+Camuflagem
+Apodrecer
+Energia da Corrupção
+Sentido da Corrupção
+Corromper Área 1
+Manipular Escuridão
+Invocar Cria de Nigurath
+Corromper Área 2
+Corrupção de Nigurath

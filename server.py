@@ -162,13 +162,16 @@ def handle_client(client, IP):
 
 			else: # Handle FTP Stream
 				data = client.recv(4096)
-				if(data[-5:] == byt("<FTP")):
+				if(data[-5:] == byt("<FTP>")):
 					file_data += data[0:-5]
 					file.write(file_data)
 					file.close()
 					client.send(byt("File successfully sent"))
+					FTP = False
+					continue
 				else:
 					file_data += data
+					continue
 
 
 			# Turn on chat mode
@@ -258,7 +261,7 @@ connections = {}
 clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"
-HOST = '186.219.90.7'
+HOST = '200.136.206.137'
 PORT = 33000
 BUFSIZ = 1024
 ADDR = (HOST, PORT)

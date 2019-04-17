@@ -75,7 +75,7 @@ def join_all(thList):
 
 QUIT = False
 FTP = False
-HOST = "186.219.90.7"
+HOST = "200.136.206.137"
 PORT = 33000
 CHAT = False
 threads = []
@@ -96,7 +96,6 @@ try:
 		th.join()
 
 except KeyboardInterrupt:
-	join_all(threads)
 	QUIT = True
 	s.close()
 	exit()

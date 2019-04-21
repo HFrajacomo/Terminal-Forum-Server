@@ -139,7 +139,7 @@ def broadcast(msg, username):
 
 # Returns help message
 def help_message():
-	return "Commands:\n\nshow\nchat\nupload <filedir>\nfiles\ndownload <file>\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\nquit\nh(elp)\n"
+	return "Commands:\n\n------ Blog ------\nshow\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\nchat\nquit\nh(elp)\n"
 
 # Prints all online users in chat
 def whoson():
@@ -179,6 +179,65 @@ def update_file(name):
 	ref.write(acc)
 	ref.close()
 
+# Log in or creates an account
+def account_management():
+	client.send(byt("/l <username> <password> to login\n/c <username> <password> to create an account\n"))
+	while(True):
+		data = client.recv(4096).decode()
+		username = data.split(" ")[1]
+		password = data.split(" ")[2]
+		if(data[0:2] == "/l"):
+			return login(username, password)
+		elif(data[0:2] == "/c"):
+			create_account(username, password)
+			return login(username, password)
+			break
+
+# Checks for an account info
+def login(username, password):
+	ADMIN = False
+	file = open(ACCFILE, "rb")
+	f_data = file.read().decode().split("\n")
+	file.close()
+
+	for line in f_data:
+		if(username == line.split("\t")[0]):
+			if(password == line.split("\t")[1]):
+				if(line.split("\t")[2] == "Admin"):
+					ADMIN = True
+				return username, ADMIN
+			client.send(byt("Wrong password for account: " + username + "\n"))
+			exit()
+		client.send(byt("No account registered as: " + username + "\n"))
+		exit()
+
+# Creates a new account and saves to _ref file
+def create_account(username, password):
+	ADMIN = False
+	if(username[-3:] == "<A>"):
+		name = username[:-3]
+		ADMIN = True
+	else:
+		name = username
+
+	# Existence check
+	file = open(ACCFILE, "rb")
+	f_data = file.read().decode().split("\n")
+	file.close()
+
+	for line in f_data:
+		if(username == line.split("\t")[0]):
+			client.send(byt("Account already exists\n"))
+			exit()	
+
+	file = open(ACCFILE, "wb")
+	if(ADMIN):
+		file.write(byt(username + "\t" + password + "\t" + "Admin\n"))
+	else:
+		file.write(byt(username + "\t" + password + "\t" + "User\n"))
+	file.close()	
+
+
 # Server activities
 def handle_client(client, IP):
 	message_count = 0  # After 20 messages, show help message
@@ -186,10 +245,12 @@ def handle_client(client, IP):
 	FTP = False
 	FTP_out = False
 	file_data = b''
-	client.send(byt("Type a username"))
-	username = client.recv(4096).decode()
+	ADMIN = False
+
 	global clients
 	clients[client] = [0, username]
+
+	username, ADMIN = account_management()
 
 	client.send(byt(help_message()))
 
@@ -352,6 +413,8 @@ clients = {}
 POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"
 REFFILE = FILEDIR + "_ref"
+ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
+ACCFILE = ACCOUNTDIR + "_ref"
 HOST = gethostbyname(getfqdn()) # "177.183.170.34"
 PORT = 33000
 BUFSIZ = 1024
@@ -367,6 +430,13 @@ if(not os.path.exists(FILEDIR)):
 if(not os.path.isfile(REFFILE)):
 	reffile = open(FILEDIR + "_ref", "w")
 	reffile.close()
+
+if(not os.path.exists(ACCOUNTDIR)):
+	os.system("mkdir Accounts")
+if(not os.path.isfile(ACCFILE)):
+	reffile = open(ACCFILE, "w")
+	reffile.close()
+
 
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  

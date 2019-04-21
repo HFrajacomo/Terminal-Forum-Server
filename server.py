@@ -28,8 +28,6 @@ def accept_connection():
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
 	except KeyboardInterrupt:
-		for con in connections.values():
-			con.join()
 		exit()
 
 
@@ -400,7 +398,6 @@ def handle_client(client, IP):
 					client.send(byt("Last message deleted\n"))
 				else:
 					client.send(byt("No user messages found\n"))
-
 				continue
 			elif(command == "quit"):
 				client.send(byt("Quit"))
@@ -430,6 +427,7 @@ POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"
 REFFILE = FILEDIR + "_ref"
 ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
+CLIENTDIR = os.getcwd() + "\\Updated_Client\\"
 ACCFILE = ACCOUNTDIR + "_ref"
 HOST = gethostbyname(getfqdn()) # "177.183.170.34"
 PORT = 33000
@@ -437,6 +435,9 @@ BUFSIZ = 1024
 ADDR = (HOST, PORT)
 QUIT = False
 Chat_Threads = []
+
+if(not os.path.exists(CLIENTDIR)):
+	os.system("mkdir Updated_Client")
 
 if(not os.path.exists(POSTDIR)):
 	os.system("mkdir Blogs")

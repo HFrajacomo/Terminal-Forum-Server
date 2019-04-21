@@ -73,10 +73,10 @@ def async_receive(conn):
 
 		# Out-going FTP
 		if(received[0:5] == "<FTP>"):
-			Desktop = os.path.expanduser("~") + "\\Desktop"
+			
 			filename = received[5:]
 			try:
-				file = open(Desktop + "\\" + filename, "rb")
+				file = open(UPLOADDIR + filename, "rb")
 				file_data = file.read()
 				conn.send(file_data)
 				conn.send(byt("<FTP>"))
@@ -105,15 +105,59 @@ def join_all(thList):
 	for th in thList:
 		th.join()
 
+def read_config():
+	file = open("config.cfg", "r")
+	data = file.read().split("\n")
+	file.close()
+	dwd = ""
+	upd = ""
+
+	for line in data:
+		aux = line.split("=")
+		try:
+			if(aux[0] == "Download_Directory"):
+				dwd = aux[1]
+			if(aux[0] == "Upload_Directory"):
+				upd = aux[1]
+		except:
+			print("Fatal Error reading config file\n")
+			exit()
+
+	# No pre-config
+	if(dwd == ""):
+		dwd = os.getcwd()
+	if(upd == ""):
+		upd = os.path.expanduser("~") + "\\Desktop\\"
+
+	# Slash fix
+	if(not dwd[-1] == "\\"):
+		dwd += "\\"
+	if(not upd[-1] == "\\"):
+		upd += "\\"
+
+	return dwd, upd
+
+
+
 QUIT = False
 FTP = False
 HOST = gethostbyname(getfqdn()) #"177.183.170.34"
 PORT = 33000
 CHAT = False
 DOWNLOADDIR = os.path.expanduser("~") + "\\Desktop\\"
+UPLOADDIR = os.path.expanduser("~") + "\\Desktop\\"
+
 threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
+
+# Creates config file
+if(not os.path.isfile("config.cfg")):
+	cfgfile = open("config.cfg", "w")
+	cfgfile.write("Download_Directory=\nUpload_Directory=")
+	cfgfile.close()
+
+DOWNLOADDIR, UPLOADDIR = read_config()
 
 received = s.recv(1024).decode() 
 print(received)

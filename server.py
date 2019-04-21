@@ -5,6 +5,7 @@ from os.path import expanduser
 from subprocess import Popen
 from threading import Thread
 from datetime import datetime
+from time import sleep
 
 # Fast bytes convertion
 def byt(text):
@@ -180,25 +181,33 @@ def update_file(name):
 	ref.close()
 
 # Log in or creates an account
-def account_management():
+def account_management(client):
 	client.send(byt("/l <username> <password> to login\n/c <username> <password> to create an account\n"))
+	err = False
+
 	while(True):
 		data = client.recv(4096).decode()
 		username = data.split(" ")[1]
 		password = data.split(" ")[2]
 		if(data[0:2] == "/l"):
-			return login(username, password)
+			return login(client, username, password)
 		elif(data[0:2] == "/c"):
-			create_account(username, password)
-			return login(username, password)
-			break
+			err = create_account(client, username, password)
+			sleep(1)
+			if(err):
+				return "-1", False
+			client.send(byt("Account " + username + " created successfully\n"))
+			return account_management(client)
 
 # Checks for an account info
-def login(username, password):
+def login(client, username, password):
 	ADMIN = False
 	file = open(ACCFILE, "rb")
 	f_data = file.read().decode().split("\n")
 	file.close()
+
+	if(username[-3:] == "<A>"):
+		username = username[:-3]
 
 	for line in f_data:
 		if(username == line.split("\t")[0]):
@@ -207,12 +216,12 @@ def login(username, password):
 					ADMIN = True
 				return username, ADMIN
 			client.send(byt("Wrong password for account: " + username + "\n"))
-			exit()
-		client.send(byt("No account registered as: " + username + "\n"))
-		exit()
+			return account_management(client)
+	client.send(byt("No account registered as: " + username + "\n"))
+	return account_management(client)
 
 # Creates a new account and saves to _ref file
-def create_account(username, password):
+def create_account(client, username, password):
 	ADMIN = False
 	if(username[-3:] == "<A>"):
 		name = username[:-3]
@@ -226,16 +235,19 @@ def create_account(username, password):
 	file.close()
 
 	for line in f_data:
-		if(username == line.split("\t")[0]):
+		if(name == line.split("\t")[0]):
 			client.send(byt("Account already exists\n"))
-			exit()	
+			sleep(1)
+			return True
+				
 
-	file = open(ACCFILE, "wb")
+	file = open(ACCFILE, "ab")
 	if(ADMIN):
-		file.write(byt(username + "\t" + password + "\t" + "Admin\n"))
+		file.write(byt(name + "\t" + password + "\t" + "Admin\n"))
 	else:
-		file.write(byt(username + "\t" + password + "\t" + "User\n"))
+		file.write(byt(name + "\t" + password + "\t" + "User\n"))
 	file.close()	
+	return False
 
 
 # Server activities
@@ -247,10 +259,14 @@ def handle_client(client, IP):
 	file_data = b''
 	ADMIN = False
 
+	username, ADMIN = account_management(client)
+
+	if(username == "-1" and not ADMIN):
+		client.send(byt("Quit"))
+		return
+
 	global clients
 	clients[client] = [0, username]
-
-	username, ADMIN = account_management()
 
 	client.send(byt(help_message()))
 
@@ -400,7 +416,7 @@ def handle_client(client, IP):
 				continue
 
 
-	'''			
+	'''	
 	except:
 		client.send(byt("Quit"))
 		return

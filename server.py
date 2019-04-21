@@ -138,7 +138,7 @@ def broadcast(msg, username):
 
 # Returns help message
 def help_message():
-	return "Commands:\n\n------ Blog ------\nshow\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\nchat\nquit\nh(elp)\n"
+	return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n"
 
 # Prints all online users in chat
 def whoson():
@@ -180,11 +180,15 @@ def update_file(name):
 
 # Log in or creates an account
 def account_management(client):
-	client.send(byt("/l <username> <password> to login\n/c <username> <password> to create an account\n"))
+	client.send(byt("/l <username> <password> to login\n/c <username> <password> to create an account\n/q quit\n"))
 	err = False
 
 	while(True):
 		data = client.recv(4096).decode()
+
+		if(data[0:2] == "/q"):
+			return "-1", False
+
 		username = data.split(" ")[1]
 		password = data.split(" ")[2]
 		if(data[0:2] == "/l"):
@@ -196,6 +200,7 @@ def account_management(client):
 				return "-1", False
 			client.send(byt("Account " + username + " created successfully\n"))
 			return account_management(client)
+
 
 # Checks for an account info
 def login(client, username, password):
@@ -261,10 +266,12 @@ def handle_client(client, IP):
 
 	if(username == "-1" and not ADMIN):
 		client.send(byt("Quit"))
+		print(str(IP) + " disconnected\n")
 		return
 
 	global clients
 	clients[client] = [0, username]
+	print(username + " anthenticated")
 
 	client.send(byt(help_message()))
 
@@ -342,7 +349,7 @@ def handle_client(client, IP):
 						message_count = 0
 				continue
 				
-			if(command == "show"):
+			if(command == "posts"):
 				client.send(byt(show_topics()))
 				continue
 

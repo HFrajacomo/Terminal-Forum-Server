@@ -137,8 +137,11 @@ def broadcast(msg, username):
 			sock.send(byt(msg))
 
 # Returns help message
-def help_message():
-	return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n"
+def help_message(name):
+	if(not is_admin(name)):
+		return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n"
+	else:
+		return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n\n------ Admin ------\n\nwho\ndelete_post <post>\ndelete_file <filename>\ncrash\n"
 
 # Prints all online users in chat
 def whoson():
@@ -152,8 +155,12 @@ def whoson():
 	return acc
 
 # Print chat help message
-def print_chat_help():
-	return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n"
+def print_chat_help(name):
+	if(not is_admin(name)):
+		return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n"
+	else:
+		return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n/k <user> to kick user from chat\n"
+
 
 # Check if file exists in _ref file
 def check_file(name):
@@ -252,6 +259,79 @@ def create_account(client, username, password):
 	file.close()	
 	return False
 
+# Admin query for admin commands
+def admin_query(client, command):
+	# General who's on
+	# Delete file
+	# Delete post
+	# Kick from chat (in chat)
+	# Crash all users
+
+	com = command.split(" ")[0]
+	try:
+		tgt = command.split(" ")[1]
+	except:
+		tgt = ""
+
+	global clients
+
+	if(com == "who"):
+		who = []
+		i = 0
+		for key in clients:
+			who.append(clients[key][1] + "\n")
+			i += 1
+		client.send(byt("".join(who) + "\n\nOnline: " + str(i) + "\n"))
+		return
+
+	elif(com == "delete_file"):
+		if(check_file(tgt)):
+			update_file(tgt)
+			os.remove(FILEDIR + tgt)
+			client.send(byt(tgt + " deleted!\n"))
+			return
+		else:
+			client.send(byt("File not Found\n"))
+			return
+
+	elif(com == "delete_post"):
+		if(os.path.isfile(POSTDIR + tgt + ".txt")):	
+			os.remove(POSTDIR + tgt + ".txt")
+			client.send(byt(tgt + " deleted!\n"))
+			return	
+		else:
+			client.send(byt("File not Found\n"))
+			return
+
+	elif(com == "crash"):
+		pops = []
+		for key in clients:
+			if(not is_admin(clients[key][1])):
+				key.send(byt("Quit"))
+				pops.append(key)
+				print(str(key) + " crashed.")
+		for con in pops:
+			clients.pop(con)
+		client.send(byt("Crashed all Users' connection"))
+		return
+
+# Checks if an username is Admin
+def is_admin(name):
+	file = open(ACCFILE, "r")
+	file_data = file.readlines()
+	file.close()
+
+	for line in file_data:
+		if(name == line.split("\t")[0]):
+			if(line.split("\t")[2] == "Admin\n"):
+				return True
+	return False
+
+# returns client key for user
+def get_user_connection(username):
+	for key in clients:
+		if(clients[key][1] == username):
+			return key
 
 # Server activities
 def handle_client(client, IP):
@@ -273,7 +353,7 @@ def handle_client(client, IP):
 	clients[client] = [0, username]
 	print(username + " anthenticated")
 
-	client.send(byt(help_message()))
+	client.send(byt(help_message(username)))
 
 	if(True):
 	#try:
@@ -330,6 +410,25 @@ def handle_client(client, IP):
 
 			# Chat Mode
 			elif(CHAT == 1):
+				if(data[0:2] == "/k" and is_admin(username)):
+					try:
+						tgt = data.split(" ")[1]
+					except:
+						client.send(byt("Syntax: /k <user>\n"))
+						continue
+
+					tgt_con = get_user_connection(tgt)
+
+					if(tgt_con == None):
+						client.send(byt("User " + tgt + " doesn't exist"))
+						continue
+
+					clients[tgt_con] = [0, tgt]
+					tgt_con.send(byt("You have been kicked from Chat\n\n/q to go back\n"))
+					broadcast(tgt + " has been kicked by " + username + "\n", username)
+					client.send(byt(tgt + " has been kicked by " + username + "\n"))
+					continue
+
 				if(data[0:2] == "/w"):
 					client.send(byt(whoson()))
 					continue
@@ -345,10 +444,10 @@ def handle_client(client, IP):
 					broadcast(msg, username)
 
 					if(message_count >= 20):
-						client.send(byt(print_chat_help()))
+						client.send(byt(print_chat_help(username)))
 						message_count = 0
 				continue
-				
+
 			if(command == "posts"):
 				client.send(byt(show_topics()))
 				continue
@@ -389,7 +488,6 @@ def handle_client(client, IP):
 				else:
 					client.send(byt("There was a problem in your message\n"))
 				continue
-
 			elif(command == "read"):
 				topic = data.split(" ")[1]
 				try:
@@ -398,7 +496,6 @@ def handle_client(client, IP):
 					page_num = 0
 				client.send(byt(rd_post(topic, page_num)))
 				continue
-
 			elif(command == "delete"):
 				topic = data.split(" ")[1]
 				if(rm_post(username, topic)):
@@ -410,13 +507,11 @@ def handle_client(client, IP):
 				client.send(byt("Quit"))
 				print(str(IP) + " disconnected\n")
 				return
-			elif(command == "crash"):
-				client.send(byt("Quit"))
-				global QUIT
-				QUIT = True
-				return
 			elif(command == "h" or command == "help"):
-				client.send(byt(help_message()))
+				client.send(byt(help_message(username)))
+				continue
+			elif(is_admin(username)):
+				admin_query(client, data)
 				continue
 
 

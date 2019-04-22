@@ -56,7 +56,7 @@ def handle_client(client, IP):
 	return
 
 # User connection
-HOST = "127.0.0.1" # "177.183.170.34"
+HOST = "200.136.196.205" # "177.183.170.34"
 PORT = 33001
 AUTH_PORT = 33002
 QUIT = False
@@ -71,6 +71,3 @@ auths = socket(AF_INET, SOCK_STREAM)
 auths.connect((HOST, AUTH_PORT))
 
 accept_connection()
-
-
-

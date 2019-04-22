@@ -92,7 +92,7 @@ def async_receive(conn):
 			FTP = True
 			continue
 
-		if(received == "<AuthF>"):
+		if(received[-7:] == "<AuthF>"):
 			QUIT = True
 			print("Authentication Failed!")
 			threads[0].join()
@@ -148,7 +148,7 @@ def read_config():
 
 QUIT = False
 FTP = False
-HOST = "127.0.0.1" #"177.183.170.34"
+HOST = "200.136.196.205" #"177.183.170.34"
 PORT = 33000
 CHAT = False
 DOWNLOADDIR = os.path.expanduser("~") + "\\Desktop\\"

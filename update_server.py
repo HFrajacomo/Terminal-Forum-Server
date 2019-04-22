@@ -1,9 +1,31 @@
 import os
 from socket import *
 from threading import Thread
+import random as rd
+from time import sleep
 
 def byt(text):
 	return bytes(text, "utf-8")
+
+def generate_serial(text):
+	serial = ""
+	text = text.strip("\t")
+	text = text.strip("\n")
+	text = text.strip(" ")
+	for i in range(0, int(len(text)/4)):
+		serial += chr(ord(text[i*4]) + int(rd.randint(0,2)))
+	return serial
+
+def get_valid_serial():
+	file = open("/Updated_Client/client.py", "r")
+	data = file.read()
+	data = data.strip("\t")
+	data = data.strip("\n")
+	data = data.strip(" ")
+	file.close()
+
+	return generate_serial(data)
+
 
 def accept_connection():
 	global connections
@@ -19,19 +41,36 @@ def accept_connection():
 
 def handle_client(client, IP):
 	global connections
+	received = client.recv(4096).decode()
+	if(received == "<new>"):
+		serial = get_valid_serial()
+	else:
+		serial = generate_serial(received)
 	updated_client = open("Updated_Client/client.py", "r")
 	client.send(byt(updated_client.read()))
 	updated_client.close()
 	connections.pop(IP)
+	auths.send(byt(serial))
+	sleep(1)
+	client.send(byt(serial))
 	return
 
-HOST = gethostbyname(getfqdn()) # "177.183.170.34"
+# User connection
+HOST = "127.0.0.1" # "177.183.170.34"
 PORT = 33001
-ADDR = (HOST, PORT)
+AUTH_PORT = 33002
 QUIT = False
 connections = {}
-
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  
-s.listen(1)           
+s.listen(1)     
+
+# Auth Server - App Server connection
+PORT = 33002
+auths = socket(AF_INET, SOCK_STREAM)
+auths.connect((HOST, AUTH_PORT))
+
 accept_connection()
+
+
+

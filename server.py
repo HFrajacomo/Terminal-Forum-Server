@@ -11,6 +11,40 @@ from time import sleep
 def byt(text):
 	return bytes(text, "utf-8")
 
+# Checks if serial is in awaited connections
+def authenticate(text):
+	global Auths
+
+	for i in range(0,5):
+		if(not text in Auths):
+			sleep(0.8)
+		else:
+			Auths.remove(text)
+			return True
+	return False
+
+# See if two characters are at least 4 ASCII distant from each other
+def in_range(a,b):
+	rang = ord(a) - ord(b)
+
+	if(rang < -3 or rang > 3):
+		return False
+	else:
+		return True
+
+# Checks if serial is valid
+def verify_auth(text):
+	file = open(CLIENTDIR + "client.py", "r")
+	data = file.read()
+	file.close()
+	if(len(text) == int(len(data)/4)):
+		for i in range(0, int(len(text)/4)):
+			if(not in_range(text[i], data[i*4])):
+				return False
+		return True
+	else:
+		return False
+
 # Waits for new connections
 def accept_connection():
 	global IPS
@@ -18,9 +52,16 @@ def accept_connection():
 	global QUIT
 	global clients
 
+	Auth_Conn = Thread(target=accept_auth_server_connection)
+	Auth_Conn.start()
+
 	try:
 		while(not QUIT):
 			client, client_address = s.accept()
+			if(not authenticate(client.recv(4096).decode())):
+				client.send(byt("<AuthF>"))
+				continue
+
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
 			clients[client] = [0, ""]
@@ -29,6 +70,23 @@ def accept_connection():
 			connections[client_address].start()
 	except KeyboardInterrupt:
 		exit()
+
+# Waits for connection from Auth Server
+def accept_auth_server_connection():
+	global Auths
+
+	auth_server, auth_address = auth_s.accept()	
+	print("Authentication Server Connected!")
+	while(not QUIT):
+		try:
+			code = auth_server.recv(4096).decode()
+			if(verify_auth(code)):
+				Auths.append(code)
+			else:
+				print("Blocked a malicious authentication code!")
+		except:
+			print("Authentication Server connection error!")
+			return
 
 
 # Add Post
@@ -531,12 +589,13 @@ REFFILE = FILEDIR + "_ref"
 ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
 CLIENTDIR = os.getcwd() + "\\Updated_Client\\"
 ACCFILE = ACCOUNTDIR + "_ref"
-HOST = gethostbyname(getfqdn()) # "177.183.170.34"
+HOST = "127.0.0.1" # "177.183.170.34"
 PORT = 33000
+AUTH_PORT = 33002
 BUFSIZ = 1024
-ADDR = (HOST, PORT)
 QUIT = False
 Chat_Threads = []
+Auths = []
 
 if(not os.path.exists(CLIENTDIR)):
 	os.system("mkdir Updated_Client")
@@ -559,5 +618,10 @@ if(not os.path.isfile(ACCFILE)):
 
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  
-s.listen(1)           
+s.listen(1)     
+
+auth_s = socket(AF_INET, SOCK_STREAM) 
+auth_s.bind((HOST, AUTH_PORT))  
+auth_s.listen(1) 
+
 accept_connection()

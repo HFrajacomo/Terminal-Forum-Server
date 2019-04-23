@@ -41,14 +41,17 @@ def accept_connection():
 
 def handle_client(client, IP):
 	global connections
+	updated_client = open(CLIENTFILE, "r")
+	client.send(byt(updated_client.read()))
+	updated_client.close()
+	client.send(byt("<EOF>"))
 	received = client.recv(4096).decode()
+	
 	if(received == "<new>"):
 		serial = get_valid_serial()
 	else:
 		serial = generate_serial(received)
-	updated_client = open(CLIENTFILE, "r")
-	client.send(byt(updated_client.read()))
-	updated_client.close()
+	
 	connections.pop(IP)
 	auths.send(byt(serial))
 	sleep(1)

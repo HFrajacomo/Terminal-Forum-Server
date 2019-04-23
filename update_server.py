@@ -17,7 +17,7 @@ def generate_serial(text):
 	return serial
 
 def get_valid_serial():
-	file = open("/Updated_Client/client.py", "r")
+	file = open(CLIENTFILE, "r")
 	data = file.read()
 	data = data.strip("\t")
 	data = data.strip("\n")
@@ -46,7 +46,7 @@ def handle_client(client, IP):
 		serial = get_valid_serial()
 	else:
 		serial = generate_serial(received)
-	updated_client = open("Updated_Client/client.py", "r")
+	updated_client = open(CLIENTFILE, "r")
 	client.send(byt(updated_client.read()))
 	updated_client.close()
 	connections.pop(IP)
@@ -56,11 +56,12 @@ def handle_client(client, IP):
 	return
 
 # User connection
-HOST = "200.136.196.205" # "177.183.170.34"
+HOST = "200.136.205.254" # "177.183.170.34"
 PORT = 33001
 AUTH_PORT = 33002
 QUIT = False
 connections = {}
+CLIENTFILE = os.getcwd() + "\\Updated_Client\\client.py"
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  
 s.listen(1)     

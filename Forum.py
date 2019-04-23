@@ -4,7 +4,7 @@ from socket import *
 def byt(text):
 	return bytes(text, "utf-8")
 
-HOST = "200.136.196.205"
+HOST = "200.136.205.254"
 PORT = 33001
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))

@@ -8,3 +8,4 @@ Tutor: write pagode iêiêiê
 Tutor: delete apaga a última mensagem enviada num tópico por você
 Tutor: delete pagode
 Tutor: quit e h saem do programa e mostram os comandos do sistema, respectivamente. Parabéns por ver o tutorial, você está pronto!
+julianak: comando show agora é posts

@@ -3,6 +3,7 @@ from threading import Thread
 import os
 import os.path
 import sys
+from platform import system
 
 def match(b_array, pat):
     i_aux = 0
@@ -74,8 +75,8 @@ def async_receive(conn):
 
 		# Out-going FTP
 		if(received[0:5] == "<FTP>"):
-			
-			filename = received[5:]
+			received = conn.recv(4096).decode()
+			filename = received
 			try:
 				file = open(UPLOADDIR + filename, "rb")
 				file_data = file.read()
@@ -134,13 +135,22 @@ def read_config():
 	if(dwd == ""):
 		dwd = os.getcwd()
 	if(upd == ""):
-		upd = os.path.expanduser("~") + "\\Desktop\\"
+		if(system() == "Windows"):
+			upd = os.path.expanduser("~") + "\\Desktop\\"
+		else:
+			upd = os.path.expanduser("~") + "/Desktop/"
 
 	# Slash fix
-	if(not dwd[-1] == "\\"):
-		dwd += "\\"
-	if(not upd[-1] == "\\"):
-		upd += "\\"
+	if(system() == "Windows"):
+		if(not dwd[-1] == "\\"):
+			dwd += "\\"
+		if(not upd[-1] == "\\"):
+			upd += "\\"
+	else:
+		if(not dwd[-1] == "/"):
+			dwd += "/"
+		if(not upd[-1] == "/"):
+			upd += "/"
 
 	return dwd, upd
 
@@ -148,11 +158,9 @@ def read_config():
 
 QUIT = False
 FTP = False
-HOST = "200.136.205.254" #"177.183.170.34"
+HOST = "177.183.170.34" #"177.183.170.34"
 PORT = 33000
 CHAT = False
-DOWNLOADDIR = os.path.expanduser("~") + "\\Desktop\\"
-UPLOADDIR = os.path.expanduser("~") + "\\Desktop\\"
 
 threads = []
 s = socket(AF_INET, SOCK_STREAM)
@@ -181,6 +189,7 @@ if(not os.path.isfile("config.cfg")):
 
 DOWNLOADDIR, UPLOADDIR = read_config()
 
+s.send(byt(system()))
 received = s.recv(1024).decode() 
 print(received)
 

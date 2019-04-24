@@ -6,6 +6,7 @@ from subprocess import Popen
 from threading import Thread
 from datetime import datetime
 from time import sleep
+from platform import system
 
 # Fast bytes convertion
 def byt(text):
@@ -62,9 +63,10 @@ def accept_connection():
 				client.send(byt("<AuthF>"))
 				continue
 
+			os = client.recv(4096).decode()
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
-			clients[client] = [0, ""]
+			clients[client] = [0, "", os]
 			IPS.append(client_address)
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
@@ -186,8 +188,6 @@ def show_topics():
 
 # Sends a message to all users in chat mode
 def broadcast(msg, username):
-	global clients
-
 	for sock in clients:
 		if(clients[sock][1] == username):
 			continue
@@ -327,7 +327,7 @@ def admin_query(client, command):
 
 	com = command.split(" ")[0]
 	try:
-		tgt = command.split(" ")[1]
+		tgt = " ".join(command.split(" ")[1:])
 	except:
 		tgt = ""
 
@@ -408,7 +408,7 @@ def handle_client(client, IP):
 		return
 
 	global clients
-	clients[client] = [0, username]
+	clients[client] = [0, username, clients[client][2]]
 	print(username + " anthenticated")
 
 	client.send(byt(help_message(username)))
@@ -432,12 +432,19 @@ def handle_client(client, IP):
 			else: # Handle FTP Stream
 				data = client.recv(4096)
 				if(data[-5:] == byt("<FTP>")):
-					file = open(FILEDIR + filename, "ab")
-					file.write(data[0:-5])
-					file.close()
+					file_data += data[0:-5]
+					if(len(file_data) < 6):
+						client.send(byt("File not Found"))
+						FTP = False
+						file_data = b''
+						continue
 
 					if(check_file(filename)):
 						update_file(filename)
+					
+					file = open(FILEDIR + filename, "wb")
+					file.write(file_data)
+					file.close()
 
 					ref = open(REFFILE, "a")
 					if(os.path.getsize(FILEDIR + filename) < 1048576):
@@ -450,15 +457,13 @@ def handle_client(client, IP):
 					file_data = b''
 					continue
 				else:
-					file = open(FILEDIR + filename, "ab")
-					file.write(data)
-					file.close()
+					file_data += data
 					continue
 
 
 			# Turn on chat mode
 			if(command == "chat" and CHAT == 0):
-				clients[client] = [1, username]
+				clients[client] = [1, username, clients[client][2]]
 				client.send(byt("Connected to Chat!"))
 				broadcast(username + " has connected\n", username)
 				client.send(byt(whoson()))
@@ -468,6 +473,15 @@ def handle_client(client, IP):
 
 			# Chat Mode
 			elif(CHAT == 1):
+				if(clients[client][0] == -1): # Kicked state
+					if(data[0:2] == "/q"):
+						client.send(byt("Disconnected from Chat!"))
+						CHAT = 0
+						message_count = 0
+						clients[client] = [0, username, clients[client][2]]
+						continue
+					else:
+						continue				
 				if(data[0:2] == "/k" and is_admin(username)):
 					try:
 						tgt = data.split(" ")[1]
@@ -481,7 +495,7 @@ def handle_client(client, IP):
 						client.send(byt("User " + tgt + " doesn't exist"))
 						continue
 
-					clients[tgt_con] = [0, tgt]
+					clients[tgt_con] = [-1, tgt, clients[tgt_con][2]]
 					tgt_con.send(byt("You have been kicked from Chat\n\n/q to go back\n"))
 					broadcast(tgt + " has been kicked by " + username + "\n", username)
 					client.send(byt(tgt + " has been kicked by " + username + "\n"))
@@ -494,7 +508,7 @@ def handle_client(client, IP):
 					client.send(byt("Disconnected from Chat!"))
 					CHAT = 0
 					message_count = 0
-					clients[client] = [0, username]
+					clients[client] = [0, username, clients[client][2]]
 					broadcast(username + " has disconnected\n", username)
 				else:
 					message_count += 1
@@ -512,13 +526,14 @@ def handle_client(client, IP):
 
 			# Activates FTP Stream
 			elif(command == "upload"):
-				filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
+				if(clients[client][2] == "Windows"):
+					filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
+				else:
+					filename = " ".join(data.split(" ")[1:]).split("/")[-1]
 				filed = " ".join(data.split(" ")[1:])
-				if(check_file(filename)):
-					file = open(FILEDIR + filename, "wb")
-					file.close()
 				FTP = True
-				client.send(byt("<FTP>" + filed))
+				client.send(byt("<FTP>"))
+				client.send(byt(filed))
 				continue
 
 			elif(command == "download"):
@@ -589,7 +604,7 @@ REFFILE = FILEDIR + "_ref"
 ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
 CLIENTDIR = os.getcwd() + "\\Updated_Client\\"
 ACCFILE = ACCOUNTDIR + "_ref"
-HOST = "200.136.205.254" # "177.183.170.34"
+HOST = "192.168.0.13" # "192.168.0.13"
 PORT = 33000
 AUTH_PORT = 33002
 BUFSIZ = 1024

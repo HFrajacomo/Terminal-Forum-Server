@@ -59,7 +59,7 @@ def handle_client(client, IP):
 	return
 
 # User connection
-HOST = "200.136.205.254" # "177.183.170.34"
+HOST = "192.168.0.13" # "177.183.170.34"
 PORT = 33001
 AUTH_PORT = 33002
 QUIT = False

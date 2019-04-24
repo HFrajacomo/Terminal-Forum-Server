@@ -337,9 +337,13 @@ def admin_query(client, command):
 		who = []
 		i = 0
 		for key in clients:
-			who.append(clients[key][1] + "\n")
+			if(is_admin(clients[key][1])):
+				who.append(clients[key][1] + "(Admin)\n")
+			else:
+				who.append(clients[key][1] + "\n")
 			i += 1
-		client.send(byt("".join(who) + "\n\nOnline: " + str(i) + "\n"))
+		client.send(byt("".join(who) + "\nOnline: " + str(i) + "\n"))
+		log_message(client, "checked who's online")
 		return
 
 	elif(com == "delete_file"):
@@ -347,6 +351,7 @@ def admin_query(client, command):
 			update_file(tgt)
 			os.remove(FILEDIR + tgt)
 			client.send(byt(tgt + " deleted!\n"))
+			log_message(client, "deleted file " + tgt)
 			return
 		else:
 			client.send(byt("File not Found\n"))
@@ -356,6 +361,7 @@ def admin_query(client, command):
 		if(os.path.isfile(POSTDIR + tgt + ".txt")):	
 			os.remove(POSTDIR + tgt + ".txt")
 			client.send(byt(tgt + " deleted!\n"))
+			log_message(client, "deleted post " + tgt)
 			return	
 		else:
 			client.send(byt("File not Found\n"))
@@ -371,6 +377,7 @@ def admin_query(client, command):
 		for con in pops:
 			clients.pop(con)
 		client.send(byt("Crashed all Users' connection"))
+		log_message(client, "crashed users")
 		return
 
 # Checks if an username is Admin
@@ -390,6 +397,10 @@ def get_user_connection(username):
 	for key in clients:
 		if(clients[key][1] == username):
 			return key
+
+# Generate log messages
+def log_message(client, text):
+	print(clients[client][1] + " " + text)
 
 # Server activities
 def handle_client(client, IP):
@@ -422,6 +433,7 @@ def handle_client(client, IP):
 				client.send(file.read())
 				file.close()
 				client.send(byt("<FTPin>"))
+				log_message(client, "downloaded " + filename)
 				FTP_out = False
 				continue
 
@@ -435,6 +447,7 @@ def handle_client(client, IP):
 					file_data += data[0:-5]
 					if(len(file_data) < 6):
 						client.send(byt("File not Found"))
+						log_message(client, "failed to upload " + filename)
 						FTP = False
 						file_data = b''
 						continue
@@ -452,6 +465,7 @@ def handle_client(client, IP):
 					else:
 						ref.write(filename + "\t" + username + "\t" + str(round(os.path.getsize(FILEDIR + filename)/1048576, 1)) + " MB" + "\t" + str(datetime.now())[0:-7] + "\n")
 					ref.close()
+					log_message(client, "uploaded " + filename)
 					client.send(byt("File successfully sent"))
 					FTP = False
 					file_data = b''
@@ -465,6 +479,7 @@ def handle_client(client, IP):
 			if(command == "chat" and CHAT == 0):
 				clients[client] = [1, username, clients[client][2]]
 				client.send(byt("Connected to Chat!"))
+				log_message(client, "entered chat")
 				broadcast(username + " has connected\n", username)
 				client.send(byt(whoson()))
 				CHAT = 1
@@ -496,6 +511,7 @@ def handle_client(client, IP):
 						continue
 
 					clients[tgt_con] = [-1, tgt, clients[tgt_con][2]]
+					log_message(client, "kicked " + clients[tgt_con][1] + " from chat")
 					tgt_con.send(byt("You have been kicked from Chat\n\n/q to go back\n"))
 					broadcast(tgt + " has been kicked by " + username + "\n", username)
 					client.send(byt(tgt + " has been kicked by " + username + "\n"))
@@ -506,6 +522,7 @@ def handle_client(client, IP):
 					continue
 				if(data[0:2] == "/q"):
 					client.send(byt("Disconnected from Chat!"))
+					log_message(client, "left chat")
 					CHAT = 0
 					message_count = 0
 					clients[client] = [0, username, clients[client][2]]
@@ -557,6 +574,7 @@ def handle_client(client, IP):
 				topic = data.split(" ")[1]
 				msg = " ".join(data.split(" ")[2:])
 				if(a_post(username, topic, msg)):
+					log_message(client, "added to post " + topic)
 					client.send(byt("Message successfully sent\n"))
 				else:
 					client.send(byt("There was a problem in your message\n"))
@@ -568,17 +586,20 @@ def handle_client(client, IP):
 				except IndexError:
 					page_num = 0
 				client.send(byt(rd_post(topic, page_num)))
+				log_message(client, "read " + topic)
 				continue
 			elif(command == "delete"):
 				topic = data.split(" ")[1]
 				if(rm_post(username, topic)):
 					client.send(byt("Last message deleted\n"))
+					log_message(client, "deleted their message at " + topic)
 				else:
 					client.send(byt("No user messages found\n"))
 				continue
 			elif(command == "quit"):
 				client.send(byt("Quit"))
 				print(str(IP) + " disconnected\n")
+				clients.pop(client)
 				return
 			elif(command == "h" or command == "help"):
 				client.send(byt(help_message(username)))

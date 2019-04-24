@@ -4,6 +4,8 @@ import os
 import os.path
 import sys
 from platform import system
+import colorama
+import sys
 
 def match(b_array, pat):
     i_aux = 0
@@ -28,24 +30,22 @@ def async_send():
 	global QUIT
 	global CHAT
 
-	try:
-		while(not QUIT):
-			sent = input()
-			if(not CHAT and not FTP):
-				os.system("cls" if os.name == 'nt' else 'clear')
-			else:
-				print()
-			if(sent == "chat"):
-				CHAT = True
-			elif(sent == "/q"):
-				CHAT = False
-				os.system("cls" if os.name == 'nt' else 'clear')
-			elif(CHAT and sent == "/c"):
-				os.system("cls" if os.name == 'nt' else 'clear')
-				continue
-			s.send(byt(sent))
-	except(OSError, EOFError):
-		return
+	while(not QUIT):
+		sent = input()
+		if(not CHAT and not FTP):
+			os.system("cls" if os.name == 'nt' else 'clear')
+		else:
+			print()
+		if(sent == "chat"):
+			CHAT = True
+		elif(sent == "/q"):
+			CHAT = False
+			os.system("cls" if os.name == 'nt' else 'clear')
+		elif(CHAT and sent == "/c"):
+			os.system("cls" if os.name == 'nt' else 'clear')
+			continue
+		s.send(byt(sent))
+
 
 def async_receive(conn):
 	global QUIT
@@ -155,10 +155,11 @@ def read_config():
 	return dwd, upd
 
 
+colorama.init(autoreset=True)
 
 QUIT = False
 FTP = False
-HOST = "177.183.170.34" #"177.183.170.34"
+HOST = "127.0.0.1" #"177.183.170.34"
 PORT = 33000
 CHAT = False
 

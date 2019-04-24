@@ -14,7 +14,7 @@ def receive_file():
 def byt(text):
 	return bytes(text, "utf-8")
 
-HOST = "177.183.170.34" # 177.183.170.34
+HOST = "127.0.0.1" # 177.183.170.34
 PORT = 33001
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))

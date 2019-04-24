@@ -7,6 +7,7 @@ from threading import Thread
 from datetime import datetime
 from time import sleep
 from platform import system
+from user_state import *
 
 # Fast bytes convertion
 def byt(text):
@@ -66,7 +67,7 @@ def accept_connection():
 			os = client.recv(4096).decode()
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
-			clients[client] = [0, "", os]
+			clients[client] = user_state(0, "", os, random_color())
 			IPS.append(client_address)
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
@@ -419,7 +420,7 @@ def handle_client(client, IP):
 		return
 
 	global clients
-	clients[client] = [0, username, clients[client][2]]
+	clients[client][1] = username
 	print(username + " anthenticated")
 
 	client.send(byt(help_message(username)))
@@ -477,7 +478,7 @@ def handle_client(client, IP):
 
 			# Turn on chat mode
 			if(command == "chat" and CHAT == 0):
-				clients[client] = [1, username, clients[client][2]]
+				clients[client][0] = 1
 				client.send(byt("Connected to Chat!"))
 				log_message(client, "entered chat")
 				broadcast(username + " has connected\n", username)
@@ -493,7 +494,7 @@ def handle_client(client, IP):
 						client.send(byt("Disconnected from Chat!"))
 						CHAT = 0
 						message_count = 0
-						clients[client] = [0, username, clients[client][2]]
+						clients[client][0] = 0
 						continue
 					else:
 						continue				
@@ -525,12 +526,12 @@ def handle_client(client, IP):
 					log_message(client, "left chat")
 					CHAT = 0
 					message_count = 0
-					clients[client] = [0, username, clients[client][2]]
+					clients[client][0] = 0
 					broadcast(username + " has disconnected\n", username)
 				else:
 					message_count += 1
 					msg = username + ": " + data + "\n"
-					broadcast(msg, username)
+					broadcast(clients[client][3] + msg, username)
 
 					if(message_count >= 20):
 						client.send(byt(print_chat_help(username)))
@@ -625,7 +626,7 @@ REFFILE = FILEDIR + "_ref"
 ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
 CLIENTDIR = os.getcwd() + "\\Updated_Client\\"
 ACCFILE = ACCOUNTDIR + "_ref"
-HOST = "192.168.0.13" # "192.168.0.13"
+HOST = "127.0.0.1" # "192.168.0.13"
 PORT = 33000
 AUTH_PORT = 33002
 BUFSIZ = 1024

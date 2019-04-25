@@ -1,12 +1,11 @@
 from socket  import *
-from threading import Thread
+from threading import Thread, Event
 import os
 import os.path
 import sys
 from platform import system
 import colorama
 import sys
-from getpass import getpass
 
 def match(b_array, pat):
     i_aux = 0
@@ -39,6 +38,9 @@ def async_send():
 		else:
 			sent = getpass("\r")
 			print(username + ": " + sent)
+
+		EV.wait()
+
 		if(not CHAT and not FTP):
 			os.system("cls" if os.name == 'nt' else 'clear')
 		else:
@@ -79,6 +81,7 @@ def async_receive(conn):
 				file_data = b''
 				FTP = False
 				print("File downloaded successfully")
+				EV.set()
 				continue
 			else:
 				file_data += received
@@ -87,6 +90,7 @@ def async_receive(conn):
 
 		# Out-going FTP
 		if(received[0:5] == "<FTP>"):
+			EV.clear()
 			received = conn.recv(4096).decode()
 			filename = received
 			try:
@@ -94,12 +98,15 @@ def async_receive(conn):
 				file_data = file.read()
 				conn.send(file_data)
 				conn.send(byt("<FTP>"))
+				EV.set()
 			except:
 				conn.send(byt("<FTP>"))
+				EV.set()
 			continue
 
 		# Prepare Incoming FTP
 		if(received[-7:] == "<FTPin>" and not FTP):
+			EV.clear()
 			filename = received[0:-7]
 			conn.send(byt("<FTPin>"))
 			FTP = True
@@ -174,6 +181,8 @@ FTP = False
 HOST = "127.0.0.1" #"177.183.170.34"
 PORT = 33000
 CHAT = False
+EV = Event()
+EV.set()
 
 threads = []
 s = socket(AF_INET, SOCK_STREAM)

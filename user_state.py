@@ -6,13 +6,15 @@ class user_state:
 	username = ""
 	user_os = ""
 	chat_color = ""
+	using_ftp = False
 
 
-	def __init__(self, chat_state, username, user_os, chat_color):
+	def __init__(self, chat_state, username, user_os, chat_color, ftp):
 		self.chat = chat_state
 		self.username = username
 		self.user_os = user_os
 		self.chat_color = chat_color
+		self.using_ftp = ftp
 
 	def __getitem__(self, i):
 		if(i == 0):
@@ -23,6 +25,8 @@ class user_state:
 			return self.user_os
 		elif(i == 3):
 			return self.chat_color
+		elif(i == 4):
+			return self.using_ftp
 
 	def __setitem__(self, i, value):
 		if(i == 0):
@@ -33,6 +37,8 @@ class user_state:
 			self.user_os = value
 		elif(i == 3):
 			self.chat_color = value
+		elif(i == 4):
+			self.using_ftp = value
 
 
 def random_color():

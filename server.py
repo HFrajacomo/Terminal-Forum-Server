@@ -75,7 +75,7 @@ def accept_connection():
 			os = client.recv(4096).decode()
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
-			clients[client] = user_state(0, "", os, random_color())
+			clients[client] = user_state(0, "", os, random_color(), False)
 			IPS.append(client_address)
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
@@ -379,13 +379,13 @@ def admin_query(client, command):
 	elif(com == "crash"):
 		pops = []
 		for key in clients:
-			if(not is_admin(clients[key][1])):
+			if(not is_admin(clients[key][1] and clients[key][4] == False)):
 				key.send(byt("Quit"))
 				pops.append(key)
 				print(str(key) + " crashed.")
 		for con in pops:
 			clients.pop(con)
-		client.send(byt("Crashed all Users' connection"))
+		client.send(byt("Crashed all Users' connection safely"))
 		log_message(client, "crashed users")
 		return
 

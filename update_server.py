@@ -4,14 +4,28 @@ from threading import Thread
 import random as rd
 from time import sleep
 
+def receive_file(client):
+	downloaded = ""
+	while True:
+		buf = client.recv(4096).decode()
+		if(buf == "<EOF>"):
+			break
+		elif(buf[-5:] == "<EOF>"):
+			downloaded += buf[0:-5]
+			break
+		downloaded += buf
+
+	return downloaded
+
 def byt(text):
 	return bytes(text, "utf-8")
 
 def generate_serial(text):
 	serial = ""
-	text = text.strip("\t")
-	text = text.strip("\n")
-	text = text.strip(" ")
+	text = text.replace("\t", "")
+	text = text.replace("\n", "")
+	text = text.replace(" ", "")
+	text = text.replace("\r", "")
 	for i in range(0, int(len(text)/4)):
 		serial += chr(ord(text[i*4]) + int(rd.randint(0,2)))
 	return serial
@@ -19,9 +33,10 @@ def generate_serial(text):
 def get_valid_serial():
 	file = open(CLIENTFILE, "r")
 	data = file.read()
-	data = data.strip("\t")
-	data = data.strip("\n")
-	data = data.strip(" ")
+	data = data.replace("\t", "")
+	data = data.replace("\n", "")
+	data = data.replace(" ", "")
+	data = data.replace("\r", "")
 	file.close()
 
 	return generate_serial(data)
@@ -42,11 +57,12 @@ def accept_connection():
 def handle_client(client, IP):
 	global connections
 	updated_client = open(CLIENTFILE, "r")
-	client.send(byt(updated_client.read()))
+	data = updated_client.read()
+	client.send(byt(data))
 	updated_client.close()
 	client.send(byt("<EOF>"))
-	received = client.recv(4096).decode()
-	
+	received = receive_file(client)
+
 	if(received == "<new>"):
 		serial = get_valid_serial()
 	else:
@@ -56,6 +72,7 @@ def handle_client(client, IP):
 	auths.send(byt(serial))
 	sleep(1)
 	client.send(byt(serial))
+	client.send(byt("<EOF>"))
 	return
 
 # User connection

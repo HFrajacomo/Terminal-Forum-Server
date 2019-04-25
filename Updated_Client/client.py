@@ -6,6 +6,7 @@ import sys
 from platform import system
 import colorama
 import sys
+from getpass import getpass
 
 def match(b_array, pat):
     i_aux = 0
@@ -29,13 +30,24 @@ def byt(text):
 def async_send():
 	global QUIT
 	global CHAT
+	
+	username = ""
 
 	while(not QUIT):
-		sent = input()
+		if(not CHAT):
+			sent = input()
+		else:
+			sent = getpass("\r")
+			print(username + ": " + sent)
 		if(not CHAT and not FTP):
 			os.system("cls" if os.name == 'nt' else 'clear')
 		else:
 			print()
+		if(sent[0:2] == "/l"):
+			try:
+				username = sent.split(" ")[1]
+			except:
+				pass
 		if(sent == "chat"):
 			CHAT = True
 		elif(sent == "/q"):

@@ -39,12 +39,20 @@ def verify_auth(text):
 	file = open(CLIENTDIR + "client.py", "r")
 	data = file.read()
 	file.close()
+	data = data.replace("\t", "")
+	data = data.replace("\n", "")
+	data = data.replace(" ", "")
+	data = data.replace("\r", "")
+	#print(int(len(data)/4))
+
 	if(len(text) == int(len(data)/4)):
 		for i in range(0, int(len(text)/4)):
 			if(not in_range(text[i], data[i*4])):
+				print("Invalid Authentication char in position: " + str(i) + " -> " + text[i])
 				return False
 		return True
 	else:
+		print("Invalid size of Authentication code: " + str(len(text)) + " vs " + str(int(len(data)/4)))
 		return False
 
 # Waits for new connections
@@ -511,7 +519,7 @@ def handle_client(client, IP):
 						client.send(byt("User " + tgt + " doesn't exist"))
 						continue
 
-					clients[tgt_con] = [-1, tgt, clients[tgt_con][2]]
+					clients[tgt_con][0] = -1 
 					log_message(client, "kicked " + clients[tgt_con][1] + " from chat")
 					tgt_con.send(byt("You have been kicked from Chat\n\n/q to go back\n"))
 					broadcast(tgt + " has been kicked by " + username + "\n", username)

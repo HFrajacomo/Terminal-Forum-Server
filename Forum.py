@@ -7,6 +7,9 @@ def receive_file():
 		buf = s.recv(4096).decode()
 		if(buf == "<EOF>"):
 			break
+		elif(buf[-5:] == "<EOF>"):
+			downloaded += buf[0:-5]
+			break
 		downloaded += buf
 
 	return downloaded
@@ -33,9 +36,11 @@ try: # File exists
 		local_client.write(downloaded_client)
 		local_client.close()
 		s.send(byt(downloaded_client))
+		s.send(byt("<EOF>"))
 
 	else: #is updated
 		s.send(byt(local_data))
+		s.send(byt("<EOF>"))
 
 except: # File doesn't exists
 	print("Downloading updated client")
@@ -45,7 +50,7 @@ except: # File doesn't exists
 	local_client.write(downloaded_client)
 	local_client.close()
 
-serial = s.recv(4096).decode()
+serial = receive_file()
 chm = []
 for element in serial:
 	chm.append(str(ord(element)))

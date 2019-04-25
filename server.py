@@ -231,9 +231,9 @@ def whoson():
 # Print chat help message
 def print_chat_help(name):
 	if(not is_admin(name)):
-		return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n"
+		return "Type /q to quit\n/h for help\n/w to see who's online\n/c to clear chat windows\n/cc to change display text color\n"
 	else:
-		return "Type /q to quit\n/w to see who's online\n/c to clear chat windows\n/k <user> to kick user from chat\n"
+		return "Type /q to quit\n/h for help\n/w to see who's online\n/c to clear chat windows\n/cc to change display text color\n/k <user> to kick user from chat\n"
 
 
 # Check if file exists in _ref file
@@ -523,6 +523,9 @@ def handle_client(client, IP):
 			if(command == "chat" and CHAT == 0):
 				clients[client][0] = 1
 				client.send(byt("Connected to Chat!"))
+				client.send(byt("<Color>"))
+				client.send(byt(clients[client][3]))
+				client.send(byt("<Color>"))
 				log_message(client, "entered chat")
 				broadcast(username + " has connected\n", username)
 				client.send(byt(whoson()))
@@ -571,9 +574,21 @@ def handle_client(client, IP):
 					message_count = 0
 					clients[client][0] = 0
 					broadcast(username + " has disconnected\n", username)
+					continue
+				if(data[0:2] == "/h"):
+					client.send(byt(print_chat_help(username)))
+					message_count = 0
+					continue
+				if(data[0:3] == "/cc"):
+					clients[client][3] = random_color()
+					client.send(byt("<Color>"))
+					client.send(byt(clients[client][3]))
+					client.send(byt("<Color>"))
+					continue
 				else:
 					message_count += 1
-					msg = username + ": " + data + "\n"
+					t = datetime.now()
+					msg = "|" + username + "|" + ": " + data + "\t[" + str(t.hour) + ":" + str(t.minute) + "]\n"
 					msg = filter_tag(msg)
 					broadcast(clients[client][3] + msg, username)
 

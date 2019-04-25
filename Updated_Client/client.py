@@ -8,6 +8,7 @@ import colorama
 import sys
 from getpass import getpass
 import re
+from datetime import datetime
 
 # Filters tags in text
 def filter_tag(text):
@@ -47,6 +48,7 @@ def byt(text):
 def async_send():
 	global QUIT
 	global CHAT
+	global REQ_COLOR
 	
 	username = ""
 
@@ -55,7 +57,17 @@ def async_send():
 			sent = input()
 		else:
 			sent = filter_tag(getpass("\r"))
-			print(username + ": " + sent)
+			if(sent == "/cc"):
+				EV.clear()
+				s.send(byt(sent))
+				REQ_COLOR = True
+				EV.set()
+				continue
+			if(sent[0:2] == "/h"):
+				s.send(byt(sent))
+				continue
+			t = datetime.now()
+			print(chat_color + "|" + username + "|" + ": " + sent + "\t[" + str(t.hour) + ":" + str(t.minute) + "]\n")
 
 		EV.wait()
 
@@ -83,8 +95,11 @@ def async_receive(conn):
 	global QUIT
 	global FTP
 	global threads
+	global chat_color
+	global REQ_COLOR
 	file_data = b''
 	filename = ""
+	acc = ""
 
 	while(not QUIT):
 		if(not FTP):
@@ -105,6 +120,19 @@ def async_receive(conn):
 				file_data += received
 				continue
 
+		
+		# Color protocol
+		# Enter chat
+		if(received[0:7] == "<Color>" and not REQ_COLOR):
+			EV.wait()
+			chat_color = received.split("<Color>")[1]
+			received = received.split("<Color>")[2]
+		elif(REQ_COLOR):
+			chat_color = conn.recv(5).decode()
+			received = conn.recv(4096).decode()
+			REQ_COLOR = False
+			continue
+		
 
 		# Out-going FTP
 		if(received[0:5] == "<FTP>"):
@@ -199,6 +227,8 @@ FTP = False
 HOST = read_ip_file()
 PORT = 33000
 CHAT = False
+REQ_COLOR = False
+chat_color = ""
 EV = Event()
 EV.set()
 

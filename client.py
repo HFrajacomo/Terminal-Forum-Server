@@ -7,6 +7,12 @@ from platform import system
 import colorama
 import sys
 from getpass import getpass
+import re
+
+# Filters tags in text
+def filter_tag(text):
+	return re.sub(r'<\w*>', "***", text)
+
 
 def read_ip_file():
 	try:
@@ -48,7 +54,7 @@ def async_send():
 		if(not CHAT):
 			sent = input()
 		else:
-			sent = getpass("\r")
+			sent = filter_tag(getpass("\r"))
 			print(username + ": " + sent)
 
 		EV.wait()

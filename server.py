@@ -8,6 +8,7 @@ from datetime import datetime
 from time import sleep
 from platform import system
 from user_state import *
+import re
 
 # Fast bytes convertion
 def byt(text):
@@ -24,6 +25,10 @@ def authenticate(text):
 			Auths.remove(text)
 			return True
 	return False
+
+# Filters tags in text
+def filter_tag(text):
+	return re.sub(r'<\w*>', "***", text)
 
 # See if two characters are at least 4 ASCII distant from each other
 def in_range(a,b):
@@ -103,6 +108,8 @@ def accept_auth_server_connection():
 # Add Post
 def a_post(username, topic, msg):
 	global POSTDIR
+
+	msg = re.sub(r'<\w*>', "***", msg)
 
 	try:
 		if(os.path.isfile(POSTDIR + topic + ".txt")):
@@ -254,17 +261,33 @@ def update_file(name):
 
 # Log in or creates an account
 def account_management(client):
-	client.send(byt("/l <username> <password> to login\n/c <username> <password> to create an account\n/q quit\n"))
 	err = False
 
 	while(True):
+		client.send(byt("/l <username> <password> to login\n/c <username> <password> to create an account\n/q quit\n"))
 		data = client.recv(4096).decode()
+		filt_user = ""
 
 		if(data[0:2] == "/q"):
 			return "-1", False
 
-		username = data.split(" ")[1]
-		password = data.split(" ")[2]
+		# Lexic Analysis
+		try:
+			username = data.split(" ")[1]
+			password = data.split(" ")[2]
+		except:
+			client.send(byt("Syntax Error: Please notice whitespaces are mandatory"))
+			continue
+
+		if(filter_tag(username) != username):
+			client.send(byt("Syntax Error: Do not use Tags in usernames"))
+			continue
+
+		if(len(data.split(" "))>3):
+			client.send(byt("Syntax Error: Username and Passwords can't have whitespaces"))
+			continue
+		# End Lexic Analysis
+
 		if(data[0:2] == "/l"):
 			return login(client, username, password)
 		elif(data[0:2] == "/c"):
@@ -551,6 +574,7 @@ def handle_client(client, IP):
 				else:
 					message_count += 1
 					msg = username + ": " + data + "\n"
+					msg = filter_tag(msg)
 					broadcast(clients[client][3] + msg, username)
 
 					if(message_count >= 20):
@@ -564,10 +588,19 @@ def handle_client(client, IP):
 
 			# Activates FTP Stream
 			elif(command == "upload"):
-				if(clients[client][2] == "Windows"):
-					filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
-				else:
-					filename = " ".join(data.split(" ")[1:]).split("/")[-1]
+				try: #  Lexic Try
+					if(clients[client][2] == "Windows"):
+						filename = "".join(" ".join(data.split(" ")[1:]).split("\\")[-1])
+					else:
+						filename = " ".join(data.split(" ")[1:]).split("/")[-1]
+				except:
+					client.send(byt("Syntax: upload <filename>"))
+					continue
+				if(len(filename.replace(" ", "").replace("\n", "")) == 0):
+					client.send(byt("Syntax: upload <filename>"))
+					continue
+
+
 				filed = " ".join(data.split(" ")[1:])
 				FTP = True
 				client.send(byt("<FTP>"))
@@ -576,6 +609,9 @@ def handle_client(client, IP):
 
 			elif(command == "download"):
 				filename = " ".join(data.split(" ")[1:])
+				if(len(filename.replace(" ", "").replace("\n", "")) == 0):
+					client.send(byt("Syntax: download <filename>"))
+					continue
 				if(check_file(filename)):
 					file = open(FILEDIR + filename, "rb")
 					client.send(byt(filename + "<FTPin>"))
@@ -592,8 +628,16 @@ def handle_client(client, IP):
 				continue
 
 			elif(command == "write"):
-				topic = data.split(" ")[1]
-				msg = " ".join(data.split(" ")[2:])
+				try: # Lexic try
+					topic = data.split(" ")[1]
+					msg = " ".join(data.split(" ")[2:])
+				except:
+					client.send(byt("Syntax: write <topic> <message>"))
+					continue
+				if(topic == "" or msg == ""):
+					client.send(byt("Syntax: write <topic> <message>"))
+					continue					
+
 				if(a_post(username, topic, msg)):
 					log_message(client, "added to post " + topic)
 					client.send(byt("Message successfully sent\n"))
@@ -601,7 +645,12 @@ def handle_client(client, IP):
 					client.send(byt("There was a problem in your message\n"))
 				continue
 			elif(command == "read"):
-				topic = data.split(" ")[1]
+				try: # Lexic try
+					topic = data.split(" ")[1]
+				except:
+					client.send(byt("Syntax: read <topic> <pagenum?>"))
+					continue
+
 				try:
 					page_num = int(data.split(" ")[2])
 				except IndexError:
@@ -610,7 +659,12 @@ def handle_client(client, IP):
 				log_message(client, "read " + topic)
 				continue
 			elif(command == "delete"):
-				topic = data.split(" ")[1]
+				try: # Lexic try
+					topic = data.split(" ")[1]
+				except:
+					client.send(byt("Syntax: delete <topic>"))
+					continue
+
 				if(rm_post(username, topic)):
 					client.send(byt("Last message deleted\n"))
 					log_message(client, "deleted their message at " + topic)

@@ -59,4 +59,13 @@ file = open("auth", "w")
 file.write(",".join(chm))
 file.close()
 
+# Creates ip file
+if(not os.path.isfile("ip.txt")):
+	ipfile = open("ip.txt", "w")
+	ipfile.write("IP=")
+	ipfile.close()
+	print("IP file created.\nOpen ip.txt and insert the server IP.\nLeave it blank to connect to localhost.\nRun this file again to connect.")
+	exit()
+
+
 os.system("python client.py")

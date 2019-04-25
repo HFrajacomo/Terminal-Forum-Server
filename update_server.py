@@ -4,6 +4,18 @@ from threading import Thread
 import random as rd
 from time import sleep
 
+# Returns ip in ipfile
+def read_ip_file():
+	try:
+		ipfile = open("ip.txt", "r")
+		ip_data = ipfile.read().replace("\n", "").split("=")[1]
+		ipfile.close()
+		if(ip_data == ""):
+			return "127.0.0.1"
+		return ip_data
+	except:
+		return "127.0.0.1"
+
 def receive_file(client):
 	downloaded = ""
 	while True:
@@ -76,7 +88,7 @@ def handle_client(client, IP):
 	return
 
 # User connection
-HOST = "127.0.0.1" # "177.183.170.34"
+HOST = read_ip_file() # "177.183.170.34"
 PORT = 33001
 AUTH_PORT = 33002
 QUIT = False

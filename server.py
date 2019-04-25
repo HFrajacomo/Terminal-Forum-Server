@@ -407,6 +407,18 @@ def get_user_connection(username):
 		if(clients[key][1] == username):
 			return key
 
+# Returns ip in ipfile
+def read_ip_file():
+	try:
+		ipfile = open("ip.txt", "r")
+		ip_data = ipfile.read().replace("\n", "").split("=")[1]
+		ipfile.close()
+		if(ip_data == ""):
+			return "127.0.0.1"
+		return ip_data
+	except:
+		return "127.0.0.1"
+
 # Generate log messages
 def log_message(client, text):
 	print(clients[client][1] + " " + text)
@@ -624,6 +636,10 @@ def handle_client(client, IP):
 		return
 	'''
 
+if(not os.path.isfile("ip.txt")):
+	ipfile = open("ip.txt", "w")
+	ipfile.write("IP=")
+	ipfile.close()
 
 IPS = []
 connections = {}
@@ -634,7 +650,7 @@ REFFILE = FILEDIR + "_ref"
 ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
 CLIENTDIR = os.getcwd() + "\\Updated_Client\\"
 ACCFILE = ACCOUNTDIR + "_ref"
-HOST = "127.0.0.1" # "192.168.0.13"
+HOST = read_ip_file() # "192.168.0.13"
 PORT = 33000
 AUTH_PORT = 33002
 BUFSIZ = 1024

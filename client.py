@@ -6,6 +6,18 @@ import sys
 from platform import system
 import colorama
 import sys
+from getpass import getpass
+
+def read_ip_file():
+	try:
+		ipfile = open("ip.txt", "r")
+		ip_data = ipfile.read().replace("\n", "").split("=")[1]
+		ipfile.close()
+		if(ip_data == ""):
+			return "127.0.0.1"
+		return ip_data
+	except:
+		return "127.0.0.1"
 
 def match(b_array, pat):
     i_aux = 0
@@ -90,6 +102,7 @@ def async_receive(conn):
 
 		# Out-going FTP
 		if(received[0:5] == "<FTP>"):
+			EV.clear()
 			received = conn.recv(4096).decode()
 			filename = received
 			try:
@@ -97,8 +110,10 @@ def async_receive(conn):
 				file_data = file.read()
 				conn.send(file_data)
 				conn.send(byt("<FTP>"))
+				EV.set()
 			except:
 				conn.send(byt("<FTP>"))
+				EV.set()
 			continue
 
 		# Prepare Incoming FTP
@@ -109,7 +124,7 @@ def async_receive(conn):
 			FTP = True
 			continue
 
-		if(received[-7:] == "<AuthF>"):
+		if(received == "<AuthF>"):
 			QUIT = True
 			print("Authentication Failed!")
 			threads[0].join()
@@ -175,7 +190,7 @@ colorama.init(autoreset=True)
 
 QUIT = False
 FTP = False
-HOST = "127.0.0.1" #"177.183.170.34"
+HOST = read_ip_file()
 PORT = 33000
 CHAT = False
 EV = Event()

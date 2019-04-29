@@ -88,7 +88,7 @@ Chatting works as simple as possible. You write what you want and hit ENTER to s
 
 The messages are labelled with the sender's username and time stamp of arrival.
 
-You can venture into the chat commands if they want:
+You can venture into the chat commands if you want:
 - **/q** quits the chat.
 - **/w** checks who's online onto the chat.
 - **/c** clears chat window locally.
@@ -104,6 +104,8 @@ One can use the server as a upload/download service. All users can upload files 
 - **files** shows the files available in the server, the user who posted it, the size and the date and time posted.
 - **upload (filename)** uploads a file to the server. Notice that the default upload directory is the Desktop folder. One can change the default directory in the file **config.cfg**.
 - **download (filename)** downloads a file from the server. The defaut download directory is the application folder. One can change it in the **config.cfg** file.
+
+*Special Thanks to Federal University of São Carlos' ASGARD Lab for aiding with Secure FTP in Linux and MacOS. This project wouldn't be multi-platform if not for them!*
 
 ## Authentication
 Everytime a user tries to connect to a server, an authentication code is generated. This code is used to block malicious attempts to connect to a server with a modified/unauthorized client.

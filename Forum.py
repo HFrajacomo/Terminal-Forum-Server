@@ -1,6 +1,18 @@
 import os
 from socket import *
 
+# Returns ip in ipfile
+def read_ip_file():
+	try:
+		ipfile = open("ip.txt", "r")
+		ip_data = ipfile.read().replace("\n", "").split("=")[1]
+		ipfile.close()
+		if(ip_data == ""):
+			return "127.0.0.1"
+		return ip_data
+	except:
+		return "127.0.0.1"
+
 def receive_file():
 	downloaded = ""
 	while True:
@@ -17,7 +29,16 @@ def receive_file():
 def byt(text):
 	return bytes(text, "utf-8")
 
-HOST = "127.0.0.1" # 177.183.170.34
+
+# Creates ip file
+if(not os.path.isfile("ip.txt")):
+	ipfile = open("ip.txt", "w")
+	ipfile.write("IP=")
+	ipfile.close()
+	print("IP file created.\nOpen ip.txt and insert the server IP.\nLeave it blank to connect to localhost.\nRun this file again to connect.")
+	exit()
+
+HOST = read_ip_file() # 177.183.170.34
 PORT = 33001
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
@@ -58,14 +79,5 @@ for element in serial:
 file = open("auth", "w")
 file.write(",".join(chm))
 file.close()
-
-# Creates ip file
-if(not os.path.isfile("ip.txt")):
-	ipfile = open("ip.txt", "w")
-	ipfile.write("IP=")
-	ipfile.close()
-	print("IP file created.\nOpen ip.txt and insert the server IP.\nLeave it blank to connect to localhost.\nRun this file again to connect.")
-	exit()
-
 
 os.system("python client.py")

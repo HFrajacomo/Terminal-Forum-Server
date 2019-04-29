@@ -24,7 +24,7 @@ A multi-platform secure distributed system capable of real-time chatting, forum 
 
 Server and client:
 ``` sh
-$ git clone <this repo>
+$ git clone https://github.com/HFrajacomo/Terminal-Forum-Server
 ```
 Client only:
 **Download Forum.py file**

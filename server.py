@@ -1,5 +1,5 @@
 from socket  import *
-from threading import Thread
+from threading import Thread, Event
 import os
 from os.path import expanduser
 from subprocess import Popen
@@ -8,6 +8,7 @@ from datetime import datetime
 from time import sleep
 from platform import system
 from user_state import *
+from FTP import *
 import re
 
 # Fast bytes convertion
@@ -48,7 +49,6 @@ def verify_auth(text):
 	data = data.replace("\n", "")
 	data = data.replace(" ", "")
 	data = data.replace("\r", "")
-	#print(int(len(data)/4))
 
 	if(len(text) == int(len(data)/4)):
 		for i in range(0, int(len(text)/4)):
@@ -80,7 +80,7 @@ def accept_connection():
 			os = client.recv(4096).decode()
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
-			clients[client] = user_state(0, "", os, random_color(), False)
+			clients[client] = user_state(0, "", os, random_color(), False, False)
 			IPS.append(client_address)
 			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
 			connections[client_address].start()
@@ -90,9 +90,17 @@ def accept_connection():
 # Waits for connection from Auth Server
 def accept_auth_server_connection():
 	global Auths
+	global auth_server_threads
 
-	auth_server, auth_address = auth_s.accept()	
-	print("Authentication Server Connected!")
+	while(not QUIT):
+		auth_server, auth_address = auth_s.accept()	
+		auth_server_threads.append(Thread(target=handle_auth_server, args=(auth_server,)))
+		auth_server_threads[-1].start()
+		print("Authentication Server Connected!")
+
+
+# Handles auth server communication
+def handle_auth_server(auth_server):
 	while(not QUIT):
 		try:
 			code = auth_server.recv(4096).decode()
@@ -446,6 +454,134 @@ def read_ip_file():
 def log_message(client, text):
 	print(clients[client][1] + " " + text)
 
+# Gets folder name in a directory
+def get_folder_name(text):
+	if(clients[client][2] == "Windows"):
+		return "".join(" ".join(text.split(" ")[1:]).split("\\")[-1])
+	else:
+		return " ".join(text.split(" ")[1:]).split("/")[-1]
+
+# Folder Syncronization Service
+def folder_sync_thread(client):
+	global clients
+	i = 1
+	USER_FOLDER = SYNCDIR + clients[client][1] + "\\"
+	sync_sleep_time = 2
+
+	if(os.path.exists(USER_FOLDER)):
+		if(not os.path.exists(USER_FOLDER + "_ref")):
+			reffile = open(USER_FOLDER + "_ref", "w")
+			reffile.close()
+	else:
+		os.system("mkdir " + USER_FOLDER)
+		reffile = open(USER_FOLDER + "_ref", "w")
+		reffile.close()		
+
+	client.send(byt("Folder Syncronization is on"))
+
+	if(1):
+	#try:
+		while(clients[client][5]):
+			if(not os.path.exists(USER_FOLDER)):
+				os.system("mkdir " + USER_FOLDER)
+
+			folder_sync(client, USER_FOLDER)
+			sleep(sync_sleep_time)
+
+	#except:
+		#client.send(byt("Something went wrong with the folder syncronization"))
+	clients[client][5] = False
+	client.send(byt("Folder Syncronization has turned off"))
+
+# File Sync parse
+def parse_sync_ref(usr_fld, client):
+	parsed = []
+	file = open(usr_fld + "_ref", "r")
+
+	for line in file:
+		parsed.append([line.split("\t")[0], int(line.split("\t")[1])])
+
+	return parsed
+
+# Finds the index of file descriptor
+def find_file(lista, filename):
+	for i in range(len(lista)):
+		if(lista[i][0] == filename):
+			return i
+	return None
+
+# Request and gets file changes
+def folder_sync(client, inF):
+	last_sync = parse_sync_ref(inF, client)
+	f_size = 0
+	last_files = [] # Only names
+	ftp = FTP()
+	file_list = ""
+
+	for desc in last_sync:
+		last_files.append(desc[0])
+
+	client.send(byt("<REPO>"))
+
+	# Retrieve file list
+
+	while(True):
+		buf = client.recv(4096).decode()
+		if(buf == "<REPO>"):
+			break
+		elif(buf[-6:] == "<REPO>"):
+			file_list += buf[0:-6]
+			break
+		file_list += buf
+
+	if(file_list == "<RepError1>"):
+		print(clients[client][1] + " got RepError1")
+		client.send(byt("Something went wrong with folder syncronization"))
+		return
+	elif(file_list == "<RepDirError>"):
+		client.send(byt("Invalid Repository Directory in config.cfg"))
+		return
+
+	names = file_list.split("\n")[:-1]
+
+	EV[client].clear()
+
+	# File Adding
+	for n in names:
+		if(n in last_files): # If is in file _ref
+			last_files.remove(n)
+			i = find_file(last_sync, n)
+			if(os.path.getsize(inF + n) == last_sync[i]): # if size is the same
+				pass
+			else: # Not same size
+				ftp.request_file(client, n)
+				data = ftp.receive_file(client, tag="<FTPR>")
+				file = open(inF + n, "wb")
+				file.write(data)
+				file.close()
+				last_sync[i][1] = os.path.getsize(inF + n)
+
+		else: # If new file
+			ftp.request_file(client, n)
+			data = ftp.receive_file(client, tag="<FTPR>")
+			file = open(inF + n, "wb")
+			file.write(data)
+			file.close()			
+			last_sync.append([n,os.path.getsize(inF + n)])
+
+	EV[client].set()
+
+	# File Removing
+	for n in last_files:
+		i = last_sync[find_file(last_sync, n)]
+		if(i != None):
+			os.remove(last_sync.pop(i)[0])
+
+	# Updating _ref
+	file = open("_ref", "w")
+	for element in last_sync:
+		file.write(element[0] + "\t" + str(element[1]) + "\n")
+
 # Server activities
 def handle_client(client, IP):
 	message_count = 0  # After 20 messages, show help message
@@ -462,6 +598,10 @@ def handle_client(client, IP):
 		print(str(IP) + " disconnected\n")
 		return
 
+	global EV
+	EV[client] = Event()
+	EV[client].set()
+
 	global clients
 	clients[client][1] = username
 	print(username + " anthenticated")
@@ -471,6 +611,8 @@ def handle_client(client, IP):
 	if(True):
 	#try:
 		while(True):
+
+			EV[client].wait()
 
 			# To client FTP connection
 			if(FTP_out):
@@ -597,7 +739,24 @@ def handle_client(client, IP):
 						message_count = 0
 				continue
 
-			if(command == "posts"):
+			# See files in cloud repository
+			if(command == "repo"):
+				file = open(SYNCDIR + clients[client][1] + "\\" + "_ref", "r")
+				client.send(byt(file.read()))
+				file.close()
+				continue
+
+			elif(command == "sync"):
+				if(clients[client][5]):
+					clients[client][5] = False
+					continue
+				else:
+					clients[client][5] = True
+					file_sync_thread = Thread(target=folder_sync_thread, args=(client,))
+					file_sync_thread.start()
+					continue
+
+			elif(command == "posts"):
 				client.send(byt(show_topics()))
 				continue
 
@@ -713,25 +872,32 @@ if(not os.path.isfile("ip.txt")):
 IPS = []
 connections = {}
 clients = {}
+auth_server_threads = []
 POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"
+SYNCDIR = os.getcwd() + "\\Sync\\"
 REFFILE = FILEDIR + "_ref"
 ACCOUNTDIR = os.getcwd() + "\\Accounts\\"
 CLIENTDIR = os.getcwd() + "\\Updated_Client\\"
 ACCFILE = ACCOUNTDIR + "_ref"
 HOST = read_ip_file() # "192.168.0.13"
 PORT = 33000
+FTP_PORT = 33003
 AUTH_PORT = 33002
 BUFSIZ = 1024
 QUIT = False
 Chat_Threads = []
 Auths = []
+EV = {}
 
 if(not os.path.exists(CLIENTDIR)):
 	os.system("mkdir Updated_Client")
 
 if(not os.path.exists(POSTDIR)):
 	os.system("mkdir Blogs")
+
+if(not os.path.exists(SYNCDIR)):
+	os.system("mkdir Sync")
 
 if(not os.path.exists(FILEDIR)):
 	os.system("mkdir Files")
@@ -749,6 +915,10 @@ if(not os.path.isfile(ACCFILE)):
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  
 s.listen(1)     
+
+ftp_s = socket(AF_INET, SOCK_STREAM)
+ftp_s.bind((HOST, FTP_PORT))
+ftp_s.listen(1)
 
 auth_s = socket(AF_INET, SOCK_STREAM) 
 auth_s.bind((HOST, AUTH_PORT))  

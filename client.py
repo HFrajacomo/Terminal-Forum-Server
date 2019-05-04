@@ -126,23 +126,6 @@ def async_receive(conn):
 			else:
 				file_data += received
 				continue
-
-		if(received == "<REPO>"):
-			files = ""
-			if(REPODIR == ""):
-				s.send(byt("<RepError1>"))
-				continue
-			try:
-				for r,d,f in os.walk(REPODIR):
-					for file in f:
-						files += (file + "\n")
-				files += "<REPO>"
-			except:
-				s.send(byt("<RepDirError>"))
-				continue
-			s.send(byt("     ")) # handle flush
-			s.send(byt(files))
-			continue
 		
 		# Color protocol
 		# Enter chat
@@ -173,21 +156,6 @@ def async_receive(conn):
 				EV.set()
 			continue
 
-		# Out-going FTP from Repo
-		if(received[0:6] == "<FTPR>"):
-			EV.clear()
-			received = conn.recv(4096).decode()
-			filename = received
-			try:
-				file = open(REPODIR + filename, "rb")
-				file_data = file.read()
-				conn.send(file_data)
-				conn.send(byt("<FTPR>"))
-				EV.set()
-			except:
-				conn.send(byt("<FTPR>"))
-				EV.set()
-			continue
 
 		# Prepare Incoming FTP
 		if(received[-7:] == "<FTPin>" and not FTP):
@@ -212,6 +180,41 @@ def async_receive(conn):
 			return
 
 		print(received)
+
+def folder_sync_thread():
+	while(not QUIT):
+		received = ftp_s.recv(4096).decode()
+
+		if(received == "<REPO>"):
+			files = ""
+			if(REPODIR == ""):
+				ftp_s.send(byt("<RepError1>"))
+				continue
+			try:
+				for r,d,f in os.walk(REPODIR):
+					for file in f:
+						files += (file + "\n")
+				files += "<REPO>"
+			except:
+				ftp_s.send(byt("<RepDirError>"))
+				continue
+			ftp_s.send(byt(files))
+			continue
+
+		# Out-going FTP from Repo
+		if(received[0:6] == "<FTPR>"):
+			received = ftp_s.recv(4096).decode()
+			filename = received
+			try:
+				file = open(REPODIR + filename, "rb")
+				file_data = file.read()
+				file.close()
+				ftp_s.send(file_data)
+				ftp_s.send(byt("<FTPR>"))
+			except:
+				ftp_s.send(byt("<FTPR>"))
+			continue
+
 
 def join_all(thList):
 	for th in thList:
@@ -290,8 +293,8 @@ EV.set()
 threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
-#ftp_s = socket(AF_INET, SOCK_STREAM)
-#ftp_s.connect((HOST, FTP_PORT))
+ftp_s = socket(AF_INET, SOCK_STREAM)
+ftp_s.connect((HOST, FTP_PORT))
 
 try:
 	file = open("auth", "r")
@@ -323,6 +326,7 @@ print(received)
 try:
 	threads.append(Thread(target=async_send))
 	threads.append(Thread(target=async_receive, args=(s,)))
+	threads.append(Thread(target=folder_sync_thread))
 
 	for th in threads:
 		th.start()

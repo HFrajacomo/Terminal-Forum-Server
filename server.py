@@ -73,6 +73,8 @@ def accept_connection():
 	try:
 		while(not QUIT):
 			client, client_address = s.accept()
+			ftp, ftp_address = ftp_s.accept()
+
 			if(not authenticate(client.recv(4096).decode())):
 				client.send(byt("<AuthF>"))
 				continue
@@ -81,8 +83,9 @@ def accept_connection():
 			print(str(client_address) + " has connected.")
 			client.send(byt("Connected\n"))
 			clients[client] = user_state(0, "", os, random_color(), False, False)
+			ftps.append(ftp) 
 			IPS.append(client_address)
-			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
+			connections[client_address] = Thread(target=handle_client, args=(client, client_address, ftp))
 			connections[client_address].start()
 	except KeyboardInterrupt:
 		exit()
@@ -462,11 +465,11 @@ def get_folder_name(text):
 		return " ".join(text.split(" ")[1:]).split("/")[-1]
 
 # Folder Syncronization Service
-def folder_sync_thread(client):
+def folder_sync_thread(client, ftp):
 	global clients
-	i = 1
+
 	USER_FOLDER = SYNCDIR + clients[client][1] + "\\"
-	sync_sleep_time = 2
+	sync_sleep_time = 5
 
 	if(os.path.exists(USER_FOLDER)):
 		if(not os.path.exists(USER_FOLDER + "_ref")):
@@ -485,7 +488,7 @@ def folder_sync_thread(client):
 			if(not os.path.exists(USER_FOLDER)):
 				os.system("mkdir " + USER_FOLDER)
 
-			folder_sync(client, USER_FOLDER)
+			folder_sync(client, ftp, USER_FOLDER)
 			sleep(sync_sleep_time)
 
 	#except:
@@ -510,8 +513,18 @@ def find_file(lista, filename):
 			return i
 	return None
 
+# Gets list of server repository files
+def get_server_repo_files(inF):
+	files = []
+	for r,d,f in os.walk(inF):
+		for file in f:
+			files.append(file)
+	files.remove("_ref")
+
+	return files
+
 # Request and gets file changes
-def folder_sync(client, inF):
+def folder_sync(client, ftp_conn, inF):
 	last_sync = parse_sync_ref(inF, client)
 	f_size = 0
 	last_files = [] # Only names
@@ -521,12 +534,12 @@ def folder_sync(client, inF):
 	for desc in last_sync:
 		last_files.append(desc[0])
 
-	client.send(byt("<REPO>"))
+	ftp_conn.send(byt("<REPO>"))
 
 	# Retrieve file list
 
 	while(True):
-		buf = client.recv(4096).decode()
+		buf = ftp_conn.recv(4096).decode()
 		if(buf == "<REPO>"):
 			break
 		elif(buf[-6:] == "<REPO>"):
@@ -544,8 +557,6 @@ def folder_sync(client, inF):
 
 	names = file_list.split("\n")[:-1]
 
-	EV[client].clear()
-
 	# File Adding
 	for n in names:
 		if(n in last_files): # If is in file _ref
@@ -554,36 +565,35 @@ def folder_sync(client, inF):
 			if(os.path.getsize(inF + n) == last_sync[i]): # if size is the same
 				pass
 			else: # Not same size
-				ftp.request_file(client, n)
-				data = ftp.receive_file(client, tag="<FTPR>")
+				ftp.request_file(ftp_conn, n)
+				data = ftp.receive_file(ftp_conn, tag="<FTPR>")
 				file = open(inF + n, "wb")
 				file.write(data)
 				file.close()
 				last_sync[i][1] = os.path.getsize(inF + n)
 
 		else: # If new file
-			ftp.request_file(client, n)
-			data = ftp.receive_file(client, tag="<FTPR>")
+			ftp.request_file(ftp_conn, n)
+			data = ftp.receive_file(ftp_conn, tag="<FTPR>")
 			file = open(inF + n, "wb")
 			file.write(data)
 			file.close()			
 			last_sync.append([n,os.path.getsize(inF + n)])
 
-	EV[client].set()
-
 	# File Removing
 	for n in last_files:
-		i = last_sync[find_file(last_sync, n)]
+		i = find_file(last_sync, n)
 		if(i != None):
-			os.remove(last_sync.pop(i)[0])
+			os.remove(inF + last_sync.pop(i)[0])
 
 	# Updating _ref
-	file = open("_ref", "w")
+	file = open(inF + "_ref", "w")
 	for element in last_sync:
 		file.write(element[0] + "\t" + str(element[1]) + "\n")
+	file.close()
 
 # Server activities
-def handle_client(client, IP):
+def handle_client(client, IP, ftp):
 	message_count = 0  # After 20 messages, show help message
 	CHAT = 0
 	FTP = False
@@ -752,7 +762,7 @@ def handle_client(client, IP):
 					continue
 				else:
 					clients[client][5] = True
-					file_sync_thread = Thread(target=folder_sync_thread, args=(client,))
+					file_sync_thread = Thread(target=folder_sync_thread, args=(client,ftp))
 					file_sync_thread.start()
 					continue
 
@@ -872,6 +882,8 @@ if(not os.path.isfile("ip.txt")):
 IPS = []
 connections = {}
 clients = {}
+ftps = []
+
 auth_server_threads = []
 POSTDIR = os.getcwd() + "\\Blogs\\"
 FILEDIR = os.getcwd() + "\\Files\\"

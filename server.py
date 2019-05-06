@@ -482,8 +482,7 @@ def folder_sync_thread(client, ftp):
 
 	client.send(byt("Folder Syncronization is on"))
 
-	if(1):
-	#try:
+	try:
 		while(clients[client][5]):
 			if(not os.path.exists(USER_FOLDER)):
 				os.system("mkdir " + USER_FOLDER)
@@ -491,10 +490,14 @@ def folder_sync_thread(client, ftp):
 			folder_sync(client, ftp, USER_FOLDER)
 			sleep(sync_sleep_time)
 
-	#except:
-		#client.send(byt("Something went wrong with the folder syncronization"))
+	except:
+		client.send(byt("Something went wrong with the folder syncronization"))
 	clients[client][5] = False
 	client.send(byt("Folder Syncronization has turned off"))
+
+# Downloads cloud repo to local
+def download_cloud_repo(ftp_s, USER_FOLDER):
+	ftp = FTP()
 
 # File Sync parse
 def parse_sync_ref(usr_fld, client):
@@ -579,6 +582,7 @@ def folder_sync(client, ftp_conn, inF):
 			file.write(data)
 			file.close()			
 			last_sync.append([n,os.path.getsize(inF + n)])
+
 
 	# File Removing
 	for n in last_files:
@@ -857,6 +861,7 @@ def handle_client(client, IP, ftp):
 				continue
 			elif(command == "quit"):
 				client.send(byt("Quit"))
+				QUIT = True
 				print(str(IP) + " disconnected\n")
 				clients.pop(client)
 				return
@@ -896,7 +901,6 @@ HOST = read_ip_file() # "192.168.0.13"
 PORT = 33000
 FTP_PORT = 33003
 AUTH_PORT = 33002
-BUFSIZ = 1024
 QUIT = False
 Chat_Threads = []
 Auths = []

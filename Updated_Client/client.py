@@ -183,7 +183,10 @@ def async_receive(conn):
 
 def folder_sync_thread():
 	while(not QUIT):
-		received = ftp_s.recv(4096).decode()
+		try:
+			received = ftp_s.recv(4096).decode()
+		except:
+			continue
 
 		if(received == "<REPO>"):
 			files = ""
@@ -294,6 +297,7 @@ threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
 ftp_s = socket(AF_INET, SOCK_STREAM)
+ftp_s.settimeout(1)
 ftp_s.connect((HOST, FTP_PORT))
 
 try:

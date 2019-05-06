@@ -297,7 +297,7 @@ threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
 ftp_s = socket(AF_INET, SOCK_STREAM)
-ftp_s.settimeout(1)
+ftp_s.settimeout(10)
 ftp_s.connect((HOST, FTP_PORT))
 
 try:

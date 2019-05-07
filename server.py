@@ -223,16 +223,14 @@ def broadcast(msg, username):
 
 # Formats file list string
 def format_files():
-	print("Rodando")
 	file_list = ""
 	ref = open(REFFILE, "r")
 	
-	for element in file_list.split("\n")[:-1]:
+	for element in ref.read().split("\n")[:-1]:
 		acc = element.split("\t")
 		file_list += '{:30}{:15}{:8}\n'.format(acc[0], acc[1], acc[2])
 
 	ref.close()
-	print(file_list)
 	return file_list
 
 # Returns help message

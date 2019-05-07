@@ -54,7 +54,7 @@ Re-run the scripts to host your server.
 
 This project follows the "Publish-Subscribe" architecture of distributed system. A wrapper is used in the user application to enforce security and mod support for server owners.
 
-![](Images/Architecture.jpg)
+![](Images/Architecture.png)
 
 ## Auto Updater
 Every server owner has the option of distributing the vanilla client or a modded one. In any case, we got you covered. Everytime a user joins a server, it will check for updates in the client version the user has.

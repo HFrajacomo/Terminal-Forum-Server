@@ -56,14 +56,52 @@ def get_valid_serial():
 
 def accept_connection():
 	global connections
+	global APP_CONNECTED
+
+	listener = Thread(target=app_server_listener, args=(read_ip_file(),))
+	listener.start()
+
 	try:
 		while(not QUIT):
-			client, client_address = s.accept()
-			print(str(client_address) + " retrieved information.")
-			connections[client_address] = Thread(target=handle_client, args=(client,client_address))
-			connections[client_address].start()
+			if(APP_CONNECTED):
+				client, client_address = s.accept()
+				print(str(client_address) + " retrieved information.")
+				connections[client_address] = Thread(target=handle_client, args=(client,client_address))
+				connections[client_address].start()
 	except KeyboardInterrupt:
 		exit()
+
+def app_server_listener(HOST, AUTH_PORT=33002):
+	global APP_CONNECTED
+	global auths
+
+	print("Listening to connections")
+
+	while(not QUIT):
+		if(is_socket_connected(auths)):
+			sleep(10)
+			continue
+		if(not APP_CONNECTED):
+			try:
+				auths = socket(AF_INET, SOCK_STREAM)
+				auths.connect((HOST, AUTH_PORT))
+				APP_CONNECTED = True
+				os.system("cls" if os.name == 'nt' else 'clear')
+				print("App server connected")
+			except:
+				print("Waiting for connection")
+				sleep(4)
+
+def is_socket_connected(s):
+	global APP_CONNECTED
+
+	try:
+		s.send(byt(""))
+		return True
+	except:
+		print("App server disconnected")
+		APP_CONNECTED = False
+		return False
 
 
 def handle_client(client, IP):
@@ -81,26 +119,29 @@ def handle_client(client, IP):
 		serial = generate_serial(received)
 	
 	connections.pop(IP)
-	auths.send(byt(serial))
+	try:
+		auths.send(byt(serial))
+	except OSError:
+		client.send(byt("<CONERR>"))
+		return
 	sleep(1)
 	client.send(byt(serial))
 	client.send(byt("<EOF>"))
 	return
 
 # User connection
+APP_CONNECTED = False
 HOST = read_ip_file() # "177.183.170.34"
 PORT = 33001
 AUTH_PORT = 33002
 QUIT = False
 connections = {}
 CLIENTFILE = os.getcwd() + "\\Updated_Client\\client.py"
+
 s = socket(AF_INET, SOCK_STREAM) 
 s.bind((HOST, PORT))  
 s.listen(1)     
 
-# Auth Server - App Server connection
-PORT = 33002
 auths = socket(AF_INET, SOCK_STREAM)
-auths.connect((HOST, AUTH_PORT))
 
 accept_connection()

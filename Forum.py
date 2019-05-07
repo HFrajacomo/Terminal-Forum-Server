@@ -17,6 +17,9 @@ def receive_file():
 	downloaded = ""
 	while True:
 		buf = s.recv(4096).decode()
+		if(buf == "<CONERR>"):
+			print("Couldn't connect to main server!")
+			exit()			
 		if(buf == "<EOF>"):
 			break
 		elif(buf[-5:] == "<EOF>"):
@@ -41,7 +44,11 @@ if(not os.path.isfile("ip.txt")):
 HOST = read_ip_file() # 177.183.170.34
 PORT = 33001
 s = socket(AF_INET, SOCK_STREAM)
-s.connect((HOST, PORT))
+try:
+	s.connect((HOST, PORT))
+except ConnectionRefusedError:
+	print("Couldn't find server!")
+	exit()
 
 print("Checking for Updates...")
 

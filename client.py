@@ -9,6 +9,7 @@ import sys
 from getpass import getpass
 import re
 from datetime import datetime
+from FTP import FTP
 
 # Filters tags in text
 def filter_tag(text):
@@ -71,15 +72,22 @@ def async_send():
 
 		EV.wait()
 
-		if(not CHAT and not FTP):
+		if(not CHAT and not FTP_):
 			os.system("cls" if os.name == 'nt' else 'clear')
+
+			if(sent == "sync" and REPODIR == ""):
+				print("Set a Local Repository Directory in config.cfg")
+				continue
+
 		else:
 			print()
 		if(sent[0:2] == "/l"):
 			try:
 				username = sent.split(" ")[1]
 			except:
-				pass
+				continue
+
+
 		if(sent == "chat"):
 			CHAT = True
 		elif(sent == "/q"):
@@ -93,7 +101,7 @@ def async_send():
 
 def async_receive(conn):
 	global QUIT
-	global FTP
+	global FTP_
 	global threads
 	global chat_color
 	global REQ_COLOR
@@ -102,7 +110,7 @@ def async_receive(conn):
 	acc = ""
 
 	while(not QUIT):
-		if(not FTP):
+		if(not FTP_):
 			received = conn.recv(4096).decode()
 		else:
 			received = conn.recv(4096)
@@ -112,14 +120,13 @@ def async_receive(conn):
 				file.write(file_data)
 				file.close()
 				file_data = b''
-				FTP = False
+				FTP_ = False
 				print("File downloaded successfully")
 				EV.set()
 				continue
 			else:
 				file_data += received
 				continue
-
 		
 		# Color protocol
 		# Enter chat
@@ -150,12 +157,13 @@ def async_receive(conn):
 				EV.set()
 			continue
 
+
 		# Prepare Incoming FTP
-		if(received[-7:] == "<FTPin>" and not FTP):
+		if(received[-7:] == "<FTPin>" and not FTP_):
 			EV.clear()
 			filename = received[0:-7]
 			conn.send(byt("<FTPin>"))
-			FTP = True
+			FTP_ = True
 			continue
 
 		if(received == "<AuthF>"):
@@ -174,16 +182,66 @@ def async_receive(conn):
 
 		print(received)
 
+def folder_sync_thread():
+	while(not QUIT):
+		received = ftp_s.recv(4096).decode()
+
+		if(received[0:6] == "<QUIT>"):
+			return
+
+		elif(received[0:6] == "<PULL>"):
+			ftp = FTP()
+			repo_files = received[6:]
+			for filename in repo_files.split("\n")[:-1]:
+				ftp_s.send(byt(filename))
+				data = ftp.receive_file(ftp_s)
+
+				file = open(REPODIR + filename, "wb")
+				file.write(data)
+				file.close()
+
+		elif(received == "<REPO>"):
+			files = ""
+			if(REPODIR == ""):
+				ftp_s.send(byt("<RepError1>"))
+				continue
+			try:
+				for r,d,f in os.walk(REPODIR):
+					for file in f:
+						files += (file + "\n")
+				files += "<REPO>"
+			except:
+				ftp_s.send(byt("<RepDirError>"))
+				continue
+			ftp_s.send(byt(files))
+			continue
+
+		# Out-going FTP from Repo
+		if(received[0:6] == "<FTPR>"):
+			received = ftp_s.recv(4096).decode()
+			filename = received
+			try:
+				file = open(REPODIR + filename, "rb")
+				file_data = file.read()
+				file.close()
+				ftp_s.send(file_data)
+				ftp_s.send(byt("<FTPR>"))
+			except:
+				ftp_s.send(byt("<FTPR>"))
+			continue
+
+
 def join_all(thList):
 	for th in thList:
 		th.join()
 
 def read_config():
 	file = open("config.cfg", "r")
-	data = file.read().split("\n")
+	data = file.readlines()
 	file.close()
 	dwd = ""
 	upd = ""
+	repodir = ""
 
 	for line in data:
 		aux = line.split("=")
@@ -192,14 +250,16 @@ def read_config():
 				dwd = aux[1]
 			if(aux[0] == "Upload_Directory"):
 				upd = aux[1]
+			if(aux[0] == "Local_Repository_Directory"):
+				repodir = aux[1]
 		except:
 			print("Fatal Error reading config file\n")
 			exit()
 
 	# No pre-config
-	if(dwd == ""):
+	if(dwd == "" or dwd == "\n"):
 		dwd = os.getcwd()
-	if(upd == ""):
+	if(upd == "" or upd == "\n"):
 		if(system() == "Windows"):
 			upd = os.path.expanduser("~") + "\\Desktop\\"
 		else:
@@ -211,21 +271,34 @@ def read_config():
 			dwd += "\\"
 		if(not upd[-1] == "\\"):
 			upd += "\\"
+
+		try:
+			if(not repodir[-1] == "\\"):
+				repodir += "\\"
+		except:
+			pass
 	else:
 		if(not dwd[-1] == "/"):
 			dwd += "/"
 		if(not upd[-1] == "/"):
 			upd += "/"
 
-	return dwd, upd
+		try:
+			if(not repodir[-1] == "/"):
+				repodir += "/"
+		except:
+			pass
+
+	return dwd, upd, repodir
 
 
 colorama.init(autoreset=True)
 
 QUIT = False
-FTP = False
+FTP_ = False
 HOST = read_ip_file()
 PORT = 33000
+FTP_PORT = 33003
 CHAT = False
 REQ_COLOR = False
 chat_color = ""
@@ -235,6 +308,8 @@ EV.set()
 threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
+ftp_s = socket(AF_INET, SOCK_STREAM)
+ftp_s.connect((HOST, FTP_PORT))
 
 try:
 	file = open("auth", "r")
@@ -254,10 +329,10 @@ s.send(byt(aux))
 # Creates config file
 if(not os.path.isfile("config.cfg")):
 	cfgfile = open("config.cfg", "w")
-	cfgfile.write("Download_Directory=\nUpload_Directory=")
+	cfgfile.write("Download_Directory=\nUpload_Directory=\nLocal_Repository_Directory=")
 	cfgfile.close()
 
-DOWNLOADDIR, UPLOADDIR = read_config()
+DOWNLOADDIR, UPLOADDIR, REPODIR = read_config()
 
 s.send(byt(system()))
 received = s.recv(1024).decode() 
@@ -266,6 +341,7 @@ print(received)
 try:
 	threads.append(Thread(target=async_send))
 	threads.append(Thread(target=async_receive, args=(s,)))
+	threads.append(Thread(target=folder_sync_thread))
 
 	for th in threads:
 		th.start()

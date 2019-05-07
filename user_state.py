@@ -7,14 +7,16 @@ class user_state:
 	user_os = ""
 	chat_color = ""
 	using_ftp = False
+	file_sync = False
 
 
-	def __init__(self, chat_state, username, user_os, chat_color, ftp):
+	def __init__(self, chat_state, username, user_os, chat_color, ftp, sync):
 		self.chat = chat_state
 		self.username = username
 		self.user_os = user_os
 		self.chat_color = chat_color
 		self.using_ftp = ftp
+		self.file_sync = sync
 
 	def __getitem__(self, i):
 		if(i == 0):
@@ -27,6 +29,8 @@ class user_state:
 			return self.chat_color
 		elif(i == 4):
 			return self.using_ftp
+		elif(i == 5):
+			return self.file_sync
 
 	def __setitem__(self, i, value):
 		if(i == 0):
@@ -39,7 +43,8 @@ class user_state:
 			self.chat_color = value
 		elif(i == 4):
 			self.using_ftp = value
-
+		elif(i == 5):
+			self.file_sync = value
 
 def random_color():
 	colors = [Fore.RED, Fore.GREEN, Fore.YELLOW, Fore.BLUE, Fore.MAGENTA, Fore.CYAN, Fore.WHITE]

@@ -107,6 +107,15 @@ One can use the server as a upload/download service. All users can upload files 
 
 *Special Thanks to Federal University of São Carlos' ASGARD Lab for aiding with Secure FTP in Linux and MacOS. This project wouldn't be multi-platform if not for them!*
 
+## Folder Syncronization
+A folder can be set for cloud sharing with the server. This folder can be set in the **config.cfg** file. 
+
+The folder sync happens in realtime once the user has used the command **sync**. One can deactivate it by using the same command.
+
+One can check the content of their repository by using the **repo** command. And can download the files from their repository using **pull**.
+
+Once syncronization is on, the files are overwriten in the cloud repository, so be careful!
+
 ## Authentication
 Everytime a user tries to connect to a server, an authentication code is generated. This code is used to block malicious attempts to connect to a server with a modified/unauthorized client.
 

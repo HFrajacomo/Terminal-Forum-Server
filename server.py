@@ -221,12 +221,26 @@ def broadcast(msg, username):
 		if(clients[sock][0] == 1):
 			sock.send(byt(msg))
 
+# Formats file list string
+def format_files():
+	print("Rodando")
+	file_list = ""
+	ref = open(REFFILE, "r")
+	
+	for element in file_list.split("\n")[:-1]:
+		acc = element.split("\t")
+		file_list += '{:30}{:15}{:8}\n'.format(acc[0], acc[1], acc[2])
+
+	ref.close()
+	print(file_list)
+	return file_list
+
 # Returns help message
 def help_message(name):
 	if(not is_admin(name)):
-		return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n"
+		return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Folder Syncronization ------\n\nrepo\nsync\npull\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n"
 	else:
-		return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n\n------ Admin ------\n\nwho\ndelete_post <post>\ndelete_file <filename>\ncrash\n"
+		return "Commands:\n\n------ Blog ------\n\nposts\nwrite <topic> <msg>\nread <topic> <page_num=0>\ndelete <topic>\n\n------ Files ------\n\nupload <filedir>\nfiles\ndownload <file>\n\n------ Folder Syncronization ------\n\nrepo\nsync\npull\n\n------ Miscellaneous ------\n\nchat\nquit\nh(elp)\n\n------ Admin ------\n\nwho\ndelete_post <post>\ndelete_file <filename>\ncrash\n"
 
 # Prints all online users in chat
 def whoson():
@@ -517,14 +531,32 @@ def find_file(lista, filename):
 	return None
 
 # Gets list of server repository files
-def get_server_repo_files(inF):
-	files = []
-	for r,d,f in os.walk(inF):
-		for file in f:
-			files.append(file)
-	files.remove("_ref")
-
+def get_server_repo_files(inF, as_string=False):
+	if(not as_string):
+		files = []
+		for r,d,f in os.walk(inF):
+			for file in f:
+				files.append(file)
+		files.remove("_ref")
+	else:
+		files = ""
+		for r,d,f in os.walk(inF):
+			for file in f:
+				if(file == "_ref"):
+					continue
+				files += file + "\n"
 	return files
+
+# Downloads cloud repo files to local repository
+def repo_pull(client, USR_FLD, ftp_conn):
+	local_rep = parse_sync_ref(USR_FLD, client)
+	ftp = FTP()
+
+	ftp_conn.send(byt("<PULL>" + get_server_repo_files(USR_FLD, as_string=True)))
+
+	for i in range(len(local_rep)):
+		filename = ftp_conn.recv(4096).decode()
+		ftp.send_file(ftp_conn, USR_FLD + filename)
 
 # Request and gets file changes
 def folder_sync(client, ftp_conn, inF):
@@ -760,6 +792,11 @@ def handle_client(client, IP, ftp):
 				file.close()
 				continue
 
+			elif(command == "pull"):
+				repo_pull(client, SYNCDIR + username + "\\", ftp)
+				client.send(byt(("Files pulled from cloud repository!")))
+				continue
+
 			elif(command == "sync"):
 				if(clients[client][5]):
 					clients[client][5] = False
@@ -810,9 +847,7 @@ def handle_client(client, IP, ftp):
 					continue
 
 			elif(command == "files"):
-				ref = open(REFFILE, "r")
-				client.send(byt(ref.read()))
-				ref.close()
+				client.send(byt(format_files()))
 				continue
 
 			elif(command == "write"):
@@ -861,6 +896,7 @@ def handle_client(client, IP, ftp):
 				continue
 			elif(command == "quit"):
 				client.send(byt("Quit"))
+				ftp.send(byt("<QUIT>"))
 				QUIT = True
 				print(str(IP) + " disconnected\n")
 				clients.pop(client)

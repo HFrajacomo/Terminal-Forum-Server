@@ -9,6 +9,7 @@ import sys
 from getpass import getpass
 import re
 from datetime import datetime
+from FTP import FTP
 
 # Filters tags in text
 def filter_tag(text):
@@ -71,7 +72,7 @@ def async_send():
 
 		EV.wait()
 
-		if(not CHAT and not FTP):
+		if(not CHAT and not FTP_):
 			os.system("cls" if os.name == 'nt' else 'clear')
 
 			if(sent == "sync" and REPODIR == ""):
@@ -100,7 +101,7 @@ def async_send():
 
 def async_receive(conn):
 	global QUIT
-	global FTP
+	global FTP_
 	global threads
 	global chat_color
 	global REQ_COLOR
@@ -109,7 +110,7 @@ def async_receive(conn):
 	acc = ""
 
 	while(not QUIT):
-		if(not FTP):
+		if(not FTP_):
 			received = conn.recv(4096).decode()
 		else:
 			received = conn.recv(4096)
@@ -119,7 +120,7 @@ def async_receive(conn):
 				file.write(file_data)
 				file.close()
 				file_data = b''
-				FTP = False
+				FTP_ = False
 				print("File downloaded successfully")
 				EV.set()
 				continue
@@ -158,11 +159,11 @@ def async_receive(conn):
 
 
 		# Prepare Incoming FTP
-		if(received[-7:] == "<FTPin>" and not FTP):
+		if(received[-7:] == "<FTPin>" and not FTP_):
 			EV.clear()
 			filename = received[0:-7]
 			conn.send(byt("<FTPin>"))
-			FTP = True
+			FTP_ = True
 			continue
 
 		if(received == "<AuthF>"):
@@ -183,12 +184,23 @@ def async_receive(conn):
 
 def folder_sync_thread():
 	while(not QUIT):
-		try:
-			received = ftp_s.recv(4096).decode()
-		except:
-			continue
+		received = ftp_s.recv(4096).decode()
 
-		if(received == "<REPO>"):
+		if(received[0:6] == "<QUIT>"):
+			return
+
+		elif(received[0:6] == "<PULL>"):
+			ftp = FTP()
+			repo_files = received[6:]
+			for filename in repo_files.split("\n")[:-1]:
+				ftp_s.send(byt(filename))
+				data = ftp.receive_file(ftp_s)
+
+				file = open(REPODIR + filename, "wb")
+				file.write(data)
+				file.close()
+
+		elif(received == "<REPO>"):
 			files = ""
 			if(REPODIR == ""):
 				ftp_s.send(byt("<RepError1>"))
@@ -283,7 +295,7 @@ def read_config():
 colorama.init(autoreset=True)
 
 QUIT = False
-FTP = False
+FTP_ = False
 HOST = read_ip_file()
 PORT = 33000
 FTP_PORT = 33003
@@ -297,7 +309,6 @@ threads = []
 s = socket(AF_INET, SOCK_STREAM)
 s.connect((HOST, PORT))
 ftp_s = socket(AF_INET, SOCK_STREAM)
-ftp_s.settimeout(10)
 ftp_s.connect((HOST, FTP_PORT))
 
 try:

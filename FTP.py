@@ -9,8 +9,9 @@ class FTP:
 		pass
 
 	# Server-side request
-	def request_file(self, client, name):
-		client.send(byt("<FTPR>"))
+	def request_file(self, client, name, no_tag=False):
+		if(no_tag):
+			client.send(byt("<FTPR>"))
 		client.send(byt(name))
 
 	# Server-side receive
